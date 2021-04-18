@@ -1,0 +1,463 @@
+---
+title: "test script"
+author: "Hong Shi"
+date: "4/4/2021"
+output: pdf_document
+---
+```{r}
+library(tidyverse)
+library(here)
+library(haven)
+library(rdrobust)
+library(finalfit)
+```
+```{r}
+?rdrobust
+```
+
+```{r}
+raw_data <- read_dta(here("inputs/data/original_data.dta"))
+```
+
+```{r}
+colnames(raw_data)
+```
+```{r}
+sum(is.na(raw_data$GPA_year1))
+```
+```{r}
+high_gpa <- 
+  raw_data %>% 
+  filter(GPA_year1 > 4)
+```
+
+```{r}
+ggplot(raw_data, aes(x = GPA_year1))+
+  geom_histogram(aes(y  = ..density..), binwidth = 0.1, color = "black", fill = "#33CCCC")+
+  geom_density(aes(y = ..density..))+
+  theme_minimal()
+```
+```{r}
+ggplot(clean_data, aes(x = dist_from_cut))+
+  geom_histogram(aes(y  = ..density..), binwidth = 0.02, color = "black", fill = "#33CCCC")+
+  geom_density(aes(y = ..density..))+
+  theme_minimal()
+```
+
+
+```{r}
+?rdplot
+```
+
+```{r}
+# drop outliers (comment in order to use full sample)
+lso <- raw_data
+lso <- lso %>% filter(dist_from_cut < 1.2 & dist_from_cut > -1.2)
+
+# additional: hist dist from cutoff
+# scatter plot makes no sense
+# truehist(lso$dist_from_cut)
+
+# generate variable: distance to cutoff (rounded with cell sizes of 0.1 grade points)
+# dist_from_cut_round10 = dist_from_cut_med10 db
+lso <- lso %>% 
+  mutate(dist_from_cut_round10 = round(dist_from_cut - 0.10/2 + 0.0001 , 1) + 0.10/2)
+
+# freq = 1 for alll obs
+lso <- lso %>% 
+  mutate(freq = 1)
+
+# replace variable freq by quantity in each group of dist_from_cut_round10
+lso1 <- lso %>% 
+  group_by(dist_from_cut_round10) %>% 
+  summarise(freq = length(freq))
+
+# dummy GPA cutoff
+# gpalscutoff -- treat
+lso1 <- lso1 %>% 
+  mutate(gpalscutoff = as.numeric(dist_from_cut_round10 < 0))
+
+# gpa = dist cutoff si <0; =0 alternativae
+lso1 <- lso1 %>% 
+  mutate(gpaXgpalscutoff = (dist_from_cut_round10)*gpalscutoff)
+
+# gpa = dist cutoff si >0; =0 alternative
+lso1 <- lso1 %>% 
+  mutate(gpaXgpagrcutoff = (dist_from_cut_round10)*(1-gpalscutoff))
+
+
+vec <- seq(-1.2, 1.2, 0.05)
+add <- rep(NA, 7)
+
+lso1 <- lso1 %>% mutate(dist_from_cut = NA, 
+                        graph_freq = NA)
+
+for(i in seq_along(vec)){
+  reg <- lm(freq~gpalscutoff+gpaXgpalscutoff+gpaXgpagrcutoff,
+             data = subset(lso1, dist_from_cut_round10 >= vec[i]-0.6 & 
+                             dist_from_cut_round10 <= vec[i]+0.6))
+  print(summary(reg))
+  add[6] <- vec[i]
+  add[3] <- as.numeric(add[6] < 0)
+  add[4] <- add[3]*add[6]
+  add[5] <- add[6]*(1-add[3])
+  lso1 <- rbind(lso1, add)
+  lso1[length(lso1$dist_from_cut), 7] <- 
+    as.numeric(predict(reg, lso1)[length(lso1$dist_from_cut)]) 
+}
+rm(add, i, reg, vec)
+
+lso1 <- lso1 %>% mutate(group_freq = ifelse(dist_from_cut>0, 1, 0))
+lso_plot <- lso1[26:74,]
+rdplot(lso_plot$graph_freq, lso_plot$dist_from_cut, c=0,
+       x.label="1st Year GPA Minus Probation Cutoff", 
+       y.label="Frequency Count", title="Figure 1")
+
+plot1 <- lso_plot %>% 
+  ggplot(aes(x=dist_from_cut, y=graph_freq, color=factor(group_freq)))+
+  geom_point(size=1.5) + stat_smooth(method = "loess", linetype=2) +
+  theme_bw()+geom_vline(xintercept = 0, linetype=3)+
+  xlab("1st Year GPA Minus Probation Cutoff")+
+  ylab("Frequency Count")+ggtitle("Figure 1")+
+  scale_x_continuous(breaks=seq(-1.5, 1.5, 0.5))+
+  theme(legend.position="none")
+plot1
+```
+```{r}
+G2 <- as.tibble(raw_data$dist_from_cut)
+bin_id = as.tibble(floor(G2*10))
+G2$bin_id <- bin_id
+Fr <- G2 %>% group_by(bin_id)  
+show_smoothed = TRUE
+bandwidth <- 0.6
+formula <- y ~ 1 
+G3 <- summarise(Fr, count = n(),
+  value = mean(value, na.rm = TRUE))
+ggplot(data = G3, mapping = aes(x = value, y = count, color = value>0)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  xlim(-1.5,1.2) + 
+  geom_vline(xintercept = 0, linetype="dotted", 
+                color = "blue", size=1.5) + 
+  stat_smooth(method="lm", se=FALSE) 
+```
+
+
+```{r}
+install.packages("rdrobust")
+```
+```{r}
+class(raw_data$dist_from_cut)
+```
+
+```{r}
+#finalfit
+library(finalfit)
+less_cutoff <- 
+  raw_data %>% 
+  filter(dist_from_cut<=0, dist_from_cut >= -0.3)
+more_cutoff <- 
+  raw_data %>% 
+  filter(dist_from_cut > 0, dist_from_cut < 0.3 )
+
+sample_data <- 
+  raw_data %>% 
+  filter(dist_from_cut >= -0.3, dist_from_cut <= 0.3)
+
+clean_data <- 
+  sample_data %>% 
+  mutate(rdd_group = 
+           case_when(
+             (dist_from_cut >= -0.3) & (dist_from_cut < 0)~ "Academic Probation",
+             (dist_from_cut >= 0) & (dist_from_cut <= 0.3)~ "In Good Standing"))
+
+
+```
+
+```{r}
+test <- 
+  raw_data %>% 
+  filter(dist_from_cut ==0)
+```
+
+```{r}
+lso <- raw_data
+lso <- lso %>% filter(dist_from_cut < 0.6 & dist_from_cut > -0.6)
+
+# choose variables
+lso <- lso %>% dplyr::select(c(hsgrade_pct, totcredits_year1, age_at_entry, 
+                        male, english, bpl_north_america,
+                        loc_campus1, loc_campus2, loc_campus3, 
+                        dist_from_cut, probation_year1, probation_ever, 
+                        left_school, year2_dist_from_cut, suspended_ever,
+                        gradin4, gradin5, gradin6))
+
+tab1 <- lso %>% summarise_all(funs(mean(., na.rm=TRUE), sd(., na.rm=TRUE)))
+
+table1 <- data.frame(matrix(NA, ncol=2, nrow=18))
+colnames(table1) <- c("mean", "sd")
+rownames(table1) <- c("hsgrade_pct", "totcredits_year1", "age_at_entry", 
+                      "male", "english", "bpl_north_america",
+                      "loc_campus1", "loc_campus2", "loc_campus3", 
+                      "dist_from_cut", "probation_year1", "probation_ever", 
+                      "left_school", "year2_dist_from_cut", "suspended_ever",
+                      "gradin4", "gradin5", "gradin6")
+for(i in 1:18){
+  table1[i,1] <- tab1[i]
+  table1[i,2] <- tab1[i+18]
+}
+table1
+```
+```{r}
+library(VIM)
+```
+
+```{r}
+?rdplot
+```
+```{r}
+unique(clean_data$GPA_year1)
+```
+
+```{r}
+summary(rdbwselect(clean_data$GPA_year1, clean_data$dist_from_cut, c=0, all = TRUE))
+```
+```{r}
+secondyear <- clean_data %>% 
+  filter(GPA_year2 != 0)
+sum(is.na(secondyear$dist_from_cut))
+```
+```{r}
+sGPA <- secondyear$GPA_year2 - secondyear$gpacutoff
+head(sGPA,100)
+```
+
+```{r}
+rdplot(sGPA, secondyear$dist_from_cut, c= 0, p = 3)
+```
+```{r}
+summary(rdrobust(y = secondyear$GPA_year2, x = secondyear$dist_from_cut,
+         c = 0, h = 0.3, all = TRUE, covs = as.factor(secondyear$hsgrade_pct)))
+# Reference the following to add covariates
+# https://stackoverflow.com/questions/57599081/fitting-a-regression-discontinuity-model-in-r-with-covariates-using-rdrobust-pac
+rdrobust(y = secondyear$GPA_year2, x = secondyear$dist_from_cut,
+         c = 0, h = 0.3, all = TRUE, covs = cbind(secondyear$hsgrade_pct))
+test_output <- rdrobust(y = secondyear$GPA_year2, x = secondyear$dist_from_cut,
+         c = 0, h = 0.3, all = TRUE, covs = cbind(secondyear$sex), scaleregul = 1)
+summary(test_output)
+```
+```{r}
+attach(secondyear)
+test_output <- rdrobust(y = secondyear$GPA_year2, x = secondyear$dist_from_cut,
+         c = 0, h = 0.3, all = TRUE, covs = cbind(secondyear$hsgrade_pct), scaleregul = 1)
+detach(secondyear)
+stargazer(test_output)
+```
+```{r}
+stargazer(clean_data, title = "Summary Statistics")
+```
+
+```{r}
+install.packages("rdd")
+library(rdd)
+```
+
+```{r}
+IKbandwidth(secondyear$dist_from_cut,secondyear$GPA_year2, cutpoint = 0, verbose = TRUE)
+```
+```{r}
+test1 <- RDestimate(GPA_year2 ~ dist_from_cut, data = secondyear, cutpoint = 0, bw = 0.3 , verbose = TRUE, model = TRUE, frame = TRUE)
+plot(test1)
+```
+```{r}
+secondyear$sex <- as.factor(secondyear$sex)
+class(secondyear$sex)
+```
+
+
+```{r}
+RD_est <- function(mod, covariates) {
+  RD_fit <- RDestimate(as.formula(paste(mod, covariates)), 
+                       data = RD_data, cutpoint = 0)
+  with(RD_fit, c(est = est[[1]], se = se[1], p = p[1]))
+}
+covariates <- list("No ")
+```
+
+```{r}
+test1 <- RDestimate(GPA_year2 ~ dist_from_cut | sex, data = secondyear, cutpoint = 0, bw = 0.3 , verbose = TRUE, model = TRUE, frame = TRUE)
+summary(test1)
+```
+
+
+```{r}
+set.seed(853)
+
+number_of_observation <- 1000
+
+rdd_example_data <- tibble(person = c(1:number_of_observation),
+                           grade = runif(number_of_observation, min = 78, max = 82),
+                           income = rnorm(number_of_observation, 10, 1)
+                           )
+
+## We want to make income more likely to be higher if they are have a grade over 80
+rdd_example_data <- 
+  rdd_example_data %>% 
+  mutate(income = if_else(grade > 80, income + 2, income))
+```
+
+```{r}
+rdrobust(y = rdd_example_data$income, 
+         x = rdd_example_data$grade, 
+         c = 80, h = 2, all = TRUE) %>% 
+  summary()
+```
+```{r}
+library(lfe)
+```
+
+```{r}
+reg_ex <- felm(nextGPA~gpalscutoff+gpaXgpalscutoff+
+                 gpaXgpagrcutoff|0|0|clustervar,
+               data = clean_data)
+summary(reg_ex)
+
+# student groups
+groups <- c("all", "lowHS", "highHS", "male", "female", "english", "noenglish")
+
+lso1 <- lso %>% filter(dist_from_cut >= -0.6 & dist_from_cut <= 0.6)
+regs <- list()
+for(i in 1:7){
+  group <- groups[i]
+  regs[[i]] <- felm(nextGPA~gpalscutoff+gpaXgpalscutoff+
+                      gpaXgpagrcutoff|0|0|clustervar, 
+                    data = clean_data[which(clean_data[, group] == 1),])
+}
+
+stargazer(regs[[1]])
+```
+
+```{r}
+groups
+```
+
+```{r}
+reg_ex <- felm(left_school~gpalscutoff+gpaXgpalscutoff+
+                 gpaXgpagrcutoff|0|0|clustervar,
+               data = subset(clean_cut, male == 1))
+
+library(lfe)
+summary(reg_ex)
+```
+```{r}
+head(clean_cut$clustervar)
+```
+
+
+```{r}
+reg_ex1 <- felm(left_school~gpalscutoff+gpaXgpalscutoff+
+                 gpaXgpagrcutoff|0|0|clustervar,
+               data = subset(clean_cut, female == 1))
+
+summary(reg_ex1)
+```
+```{r}
+class(clean_cut$left_school)
+clean_cut$left_school <- as.factor(clean_cut$left_school)
+clean_cut
+```
+
+```{r}
+# Refactor these
+class(clean_cut$sex)
+clean_cut$sex <- as.factor(clean_cut$sex)
+clean_cut$year2_dist_from_cut
+```
+
+
+```{r}
+lm_reg_all <- lm(year2_dist_from_cut ~ probation_year1 + dist_from_cut, data = clean_cut)
+summary(lm_reg_all)
+clean_cut$left_school
+```
+```{r}
+clean_cut$probation_year1 <- as.factor(clean_cut$probation_year1)
+ggplot(data= clean_cut, aes(x = dist_from_cut, y = year2_dist_from_cut, color = probation_year1))+
+  geom_point(alpha = 0.1)+
+  geom_smooth()
+```
+
+```{r}
+lm_reg_all <- glm(left_school ~ probation_year1 + dist_from_cut , family = "binomial", data = clean_cut)
+summary(lm_reg_all)
+```
+```{r}
+test1 <- RDestimate(left_school ~ dist_from_cut , data = clean_cut, cutpoint = 0, bw = 0.3 ) 
+                    #verbose = TRUE, model = TRUE, frame = TRUE)
+summary(test1)
+```
+```{r}
+clean_cut$dist_from_cut
+```
+
+```{r}
+?rdrobust
+test_rdd <- rdrobust(y = clean_cut$left_school, x = clean_cut$dist_from_cut ,c = 0, h = 0.3, all = TRUE)
+summary(test_rdd)
+```
+
+
+```{r}
+lm_reg <- lm(left_school ~ probation_year1 + dist_from_cut, data = subset(clean_cut, male == 1))
+lm_reg1 <- lm(left_school ~ probation_year1 + dist_from_cut, data = subset(clean_cut, female == 1))
+summary(lm_reg)
+```
+
+```{r}
+summary(lm_reg1)
+```
+
+
+
+```{r}
+class(clean_data$lowHS)
+clean_data$lowHS <- as.factor(clean_data$lowHS)
+
+```
+
+```{r}
+?sample
+lowHS <- sample[clean_data$lowHS == 1, ]
+highHS <- sample[clean_data$highHS == 1, ]
+male <- sample[clean_data$male == 1, ]
+female <- sample[clean_data$female == 1, ]
+english <- sample[clean_data$english == 1, ]
+noenglish <- sample[clean_data$noenglish == 1, ]
+```
+```{r}
+table3col1 <- lm(probation_year1 ~ gpalscutoff + gpaXgpalscutoff + gpaXgpagrcutoff, data = clean_data)
+coef1 <- coef(table3col1)[1:2]
+col1 <- c(coef1,count(clean_data))
+table3 <- cbind(col1)
+colnames(table3) = c("ALL")
+rownames(table3) = c("constant(control mean)", "first year GPA < cutoff", "observations")
+print(table3)
+```
+
+```{r}
+colnames(clean_data)
+```
+
+```{r}
+class(clean_data$hsgrade_pct)
+head(clean_data$highHS)
+```
+```{r}
+reg_ex <- felm(gradin4~gpalscutoff+gpaXgpalscutoff+
+                 gpaXgpagrcutoff|0|0|clustervar,
+               data = subset(raw_data, dist_from_cut >= -0.6 & 
+                               dist_from_cut <= 0.6 & male == 1))
+```
+```{r}
+summary(reg_ex)
+```
+

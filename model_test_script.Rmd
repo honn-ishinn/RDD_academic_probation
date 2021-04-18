@@ -1,0 +1,109 @@
+---
+title: "Untitled"
+author: "Hong Shi"
+date: "4/17/2021"
+output: pdf_document
+---
+```{r}
+library(tidyverse)
+library(here)
+library(finalfit)
+library(kableExtra)
+library(rdrobust)
+library(broom)
+#install.packages("rdpower")
+library(rdpower)
+```
+
+```{r}
+clean_cut <- read_csv(here("inputs/data/adjust_bandwidth_data.csv"))
+```
+
+
+```{r}
+# Histogram of the distribution of GPA from cutoff
+
+ggplot(clean_for_summary, aes(x = dist_from_cut))+
+  geom_histogram(aes(y  = stat(count)), binwidth = 0.125, color = "black", fill = "#33CCCC")+
+  geom_vline(xintercept = 0, linetype = "dotted")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+```
+
+```{r}
+# plot to show the probation assignment
+ggplot(clean_cut,aes(x = dist_from_cut, y = status, group = status, color = status))+
+  geom_point(alpha = 0.1)+
+  geom_smooth(method = "lm")+
+  theme_minimal()+
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5))+
+  labs( title = "Stuent Academic Status",
+        y ="Academic Status",
+        x = "Year 1 GPA minus Probation Cutoff")
+```
+```{r}
+# Check the number of students with administrative data error reporting 
+clean_for_summary %>% 
+  filter((dist_from_cut < 0 & probation_year1 !=1)| (dist_from_cut >=0 & probation_year1 !=0) ) %>% 
+  length()
+```
+
+```{r}
+clean_cut$status <- as.factor(clean_cut$probation_year1)
+ggplot(data= clean_cut, aes(x = dist_from_cut, y = GPA_year2, color = status))+
+  geom_point(alpha = 0.1)+
+  geom_smooth()
+```
+```{r}
+class(clean_cut$gender)
+class(clean_cut$highHS)
+class(clean_cut$first_language)
+clean_cut$gender <- as.factor(clean_cut$gender)
+clean_cut$highHS <- as.factor(clean_cut$highHS)
+clean_cut$first_language <- as.factor(clean_cut$first_language)
+
+```
+```{r}
+class(clean_cut$)
+class(clean_cut2$dist_from_cut)
+
+```
+
+```{r}
+rdplot(y = clean_cut$GPA_year2, x = clean_cut$dist_from_cut, c = 0, p = 1, covs = cbind(clean_cut$gender,clean_cut$highHS, clean_cut$first_language), title = "GPA by Year 4")
+```
+```{r}
+rdplot(y = clean_cut$left_school, x = clean_cut$dist_from_cut, c = 0, p = 1, covs = cbind(clean_cut$gender,clean_cut$highHS, clean_cut$first_language), title = "GPA by Year 4")
+```
+
+```{r}
+clean_male <- clean_cut %>% 
+  filter(female ==1)
+class(clean_male$left_school)
+clean_male$left_school <- as.factor(clean_male$left_school)
+```
+
+```{r}
+test_male <- glm(left_school ~ status + dist_from_cut + highHS + first_language ,family = "binomial", data = clean_male)
+summary(test_male)
+```
+```{r}
+rdplot(y = clean_male$left_school, x = clean_male$dist_from_cut, c = 0, p = 1, covs = cbind(clean_male$highHS, clean_male$first_language), title = "GPA by Year 4")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

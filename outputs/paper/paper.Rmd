@@ -1,30 +1,728 @@
 ---
-title: "Academic Probation"
+title: "Academic Probation Increases Student Dropout While Improving Remaining Student Performance"
+subtitle: "Revisiting the Ability, Gender, and Performance Standards: Evidence from Academic Probation (Lindo, Sanders, and Oreopoulos 2010)"
 author: "Hong Shi"
-date: "4/4/2021"
-output: pdf_document
+date: "`r format(Sys.time(), '%d %B %Y')`"
+abstract: " Many universities use academic probation as a wake-up call to ensure currently enrolled students to achieve minimum academic standards. This paper examines the causal impact on first-year students in a Canadian univesity after being placed on academic probation in a sharp regression discontinuity design. The experiment results indicate that academic probation increases the student dropout, improves GPAs of the remaining students and negatively affects graduation rates. There are also heterogeneous responses across students' high school performance, gender, native language, campus and program of study towards academic probation. #High Level Importance \\par\\textbf{Keywords:} Regression Discontinuity Design, Academic Probation, Dropoff, Student Performance, Graduation, Causality, Simpson's Paradox"
+output:
+  bookdown::pdf_document2:
+    latex_engine: xelatex
+toc: FALSE
+
+header-includes:
+ - \usepackage{float}
+ - \floatplacement{figure}{H}
+ - \floatplacement{table}{H}
+
+always_allow_html: yes
+
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rdrobust)
+library(here)
+library(stargazer)
+library(kableExtra)
+library(finalfit)
+library(broom)
+#install.packages("rdpower")
+library(rdpower)
+library(modelsummary)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Introduction
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+&nbsp; &nbsp; First-year students usually hold positive expectations after entering the university [@cite_success]. Despite their high expectations, some students fail to achieve the minimum academic standards and are placed into academic probation. Academic probation serves as a wake-up call for students whose grade point average (GPA) is below a certain threshold and can lead to escalating penalties such as suspensions. Therefore, placing students on academic probation is equivalent to setting a minimum standard for their future academic performance [@cite_original], while previous studies implied that students may react quite differently to academic probation (e.g., dropout, increase academic performance, etc.)[@cite_model_background].
 
-```{r cars}
-summary(cars)
+&nbsp; &nbsp; This paper examines the causal impact on first-year university students after being placed on academic probation by exploiting the discontinuous probation GPA cutoff in a sharp regression discontinuity design (RDD). The data comes form a large Canadian university with three individual campuses. It is a replication of `“Ability, Gender, and Performance Standards: Evidence from Academic Probation."` [@cite_original] with adjustment on the bandwidth (i.e., student within certain grade points of the academic probation cutoff). The results are consistent with Lindo's findings that being placed on probation at the end of the first year increases the student dropout, improves the GPAs of the remaining students and negatively affects graduation rates (Note: May adjust the result after applying the new bandwidth.). Besides, students with different high school academic performance, gender or native language react differently to academic probation. Furthermore, I also find heterogeneous responses to academic probation across campus that is not mentioned in the original paper (Note: May adjust the result after running the model.).
+
+&nbsp; &nbsp; The rest of this paper is organized as follows: In Data Section, I would first explain the domain background about the academic probation. Next, I introduce the data used in the original paper. And then, I would describe the Quasi-experiment design rationale and also raise concerns about the bandwidth used in the original paper. In Model section, I elaborate on the sharp RDD and presents the model in this experiment. I would address assumptions about RDD as well. In Results section, I show the impact of academic probation on student dropout, subsequent performance and graduation with the adjusted bandwidth. In Discussion section, I would first summarize the experiment findings, and then elaborate on the causality of the experiment, address external and internal validity and also Simpson's Paradox (also possibly Berkson's Paradox) regarding the campus variation. Finally, I conclude with some limitations and suggest future directions of this experiment. ^[Code and data are available at the GitHub repo: https://github.com/honn-ishinn/RDD_academic_probation.]
+
+# Data
+
+&nbsp; &nbsp; The data comes from a large Canadian university with three individual campuses: one central campus (Campus 1) and two smaller satellite campuses (Campus 2 and Campus 3) from 1996 to 2005. I analyzed it using R [@citeR], and packages `tidyverse` [@cite_tidyverse],  `here` [@cite_here], `rdrobust` [@cite_rdrobust], `rdd`[@cite_rdd], `rdpower`[@cite_rdpower],  `stargazer`[@cite_stargazer], `janitor` [@cite_janitor], `httr` [@cite_httr], `xml2` [@cite_xml2]. I used packages `bookdown` [@cite_bookdown], `kableExtra` [@cite_kableextra], `ggrepel` [@cite_ggrepel], `finalfit` [@cite_finalfit], `broom` [@cite_broom] to format the document and referenced `Impact Evaluation in Practice` [@cite_impact] to evaluate this experiment.
+
+## About Academic Probation
+
+&nbsp; &nbsp; The principle of academic probation in this university is simple: if a student's grade point average (GPA) is below a certain threshold, the student is placed on academic probation. At Campus 1 and Campus 2, students with a cumulative GPA below 1.5 grade points are placed on academic probation. Campus 3 has a GPA cutoff at 1.6 grade points. Students with GPA exactly at the probation cutoff are considered in good academic standing.
+
+&nbsp; &nbsp; Since many first-year courses span the entire year, students' academic standings are evaluated at the end of first scholastic year. Academic standings are evaluated at the end of every subsequent scholastic year and summer term at Campus 1 and Campus 2, and end of every subsequent term at Campus 3^[Students also must attempt a minimum number of credits before being evaluated. The data used in the original paper omit all students who have not been evaluated by the end on first year. Potential bias issues are elaborated in Discussion section].
+
+&nbsp; &nbsp; Students on academic probation will be suspended in subsequent sessions if their grades do not improve. At all campuses, students on probation can avoid suspension and return to good academic standing by improving their cumulative GPA up to the cutoff. Students who fail to sufficiently improve their grades are suspended for one full academic year. If suspended students return to the university and again fail to sufficiently improve their grades, they can be suspended for three years. A third failure to meet the GPA requirement can lead to permanent suspension from all campuses. Students will be notified after being placed on academic probation. A sample letter sent to students at Campus 2 is in Appendix 1.  
+
+## Original Data {#od}
+
+```{r, include=FALSE}
+clean_data <- read.csv(here("inputs/data/cleaned_original.csv"))
 ```
 
-## Including Plots
+```{r, include=FALSE}
+# Generate column for summary statistics
 
-You can also embed plots, for example:
+clean_for_summary <-  clean_data %>% 
+  mutate( gender = 
+            case_when(sex == "M" ~ "Male",
+                      sex == "F" ~ "Female"), 
+          birthplace = case_when( bpl_north_america == 1 ~ "North America",
+                                        bpl_asia == 1 ~ "Asia",
+                                        bpl_other == 1 ~ "Other"),
+          study_campus = case_when(loc_campus1 == 1 ~ "Campus 1",
+                                        loc_campus2 == 1 ~ "Campus 2",
+                                        loc_campus3 == 1 ~ "Campus 3"),
+          first_language = case_when(mtongue == "English" ~ "English",
+                                       mtongue == "Other" ~ "Other"),
+          on_probation_after_1st_year = case_when( probation_year1 == 1 ~ "Yes",
+                                                     probation_year1 == 0 ~ "No"),
+          ever_on_probation = case_when( probation_ever == 1 ~ "Yes",
+                                           probation_ever == 0 ~ "No"),
+          left_university_after_1st_evaluation = case_when(left_school == 1 ~ "Yes",
+                                                             left_school == 0 ~ "No"),
+          ever_suspended = case_when(suspended_ever == 1 ~ "Yes",
+                                       suspended_ever == 0 ~ "No"),
+          graduated_by_year4 = case_when(gradin4 == 1 ~ "Yes",
+                                            gradin4 == 0 ~ "No"),
+          graduated_by_year5 = case_when(gradin5 == 1 ~ "Yes",
+                                            gradin5 == 0 ~ "No"),
+          graduated_by_year6 = case_when(gradin6 == 1 ~ "Yes",
+                                            gradin6 == 0 ~ "No"),
+          all_students = case_when(all == 1 ~ "All Students" ))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Summary statistics for categorical variable
+categorical1 <- clean_for_summary %>% 
+  summary_factorlist("all_students", c("gender", "birthplace", "study_campus", "first_language", "on_probation_after_1st_year", "ever_on_probation", "left_university_after_1st_evaluation", "ever_suspended", "graduated_by_year4", "graduated_by_year5", "graduated_by_year6"),
+                     p = FALSE, 
+                     digits = c(1,1,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+
+# Summary statistics for continuous variable
+
+continuous1 <- clean_for_summary %>% 
+#  select(`All Students`, Gender) %>%
+  summary_factorlist("all_students", c("hsgrade_pct", "totcredits_year1", "age_at_entry","GPA_year1", "dist_from_cut","GPA_year2", "year2_dist_from_cut"),
+                     p = FALSE,
+                     digits = c(2,2,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+
+# Add rows for visualization using kabel
+
+combine1 <- rbind(categorical1, continuous1)
+combine1 <- rbind(combine1, c("Characteristics", "",""))
+combine1 <- rbind(combine1, c("Outcomes", "", ""))
+combine1 <- rbind(combine1, c("","","Mean (SD)"))
+combine1 <- rbind(combine1, c("","","Mean (SD)"))
+combine1 <- rbind(combine1, c("","",""))
+combine1 <- rbind(combine1, c("","",""))
+combine1 <- rbind(combine1, c("","",""))
+combine1$` ` <- replace(combine1$` `, combine1$` ` == "Mean (SD)", "")
+
+# Manual Modification For Visualization
+
+combine1$all_students <- NULL
+combine1 <- combine1[c(34,1,3,2,5,4,6:11,38,36,27:29,39,34,26,13,12,15,14,17,16,19,18,21,20,23,22,25,24,40,37,30,31,32,33),] %>% 
+  mutate(Description = c("Characteristics","","Gender","","Birth Place", "","","Study Campus","","", "First Language","","","","Highschool Grade Percentile","Credits Attempted in First Year", "Age at Entry","", "Outcomes","","On Probation After 1st Year","","Ever On Probation", "", "Left University After 1st Evaluation", "","Ever Suspended","","Graduated by Year 4","", "Graduated by Year 5","", "Graduated by Year 6","","","","First Year GPA","Distance from Cutoff in 1st Year","Second Year GPA", "Distance from Cutoff in 2nd Year"))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r allsummary, tab.cap="Summary Statistics of Observable Characteristics and Outcomes of All Students", echo = FALSE, message = FALSE, warning=FALSE}
+# Generate summary table
+kable(combine1[,c(3,1,2)],caption = "Summary Statistics of Observable Characteristics and Outcomes of All Students",
+       booktabs = TRUE, linesep = "") %>% 
+  kable_styling() %>% 
+  add_footnote("For all characteristics and outcomes except graduation rates and distance from cutoff in 2nd year. The entire dataset consists of 44362 students. Graduation rate samples are 30017 for Year 4, 24581 for Year 5, 19757 for Year 6.38576 students have GPA observed in 2nd Year", notation = "number")
+```
+
+&nbsp; &nbsp; The data used in the original paper includes administrative information of students in a large Canadian university as mentioned above. It covers student observations in a nine-year period from 1996 to 2005 and has cleaned the student sample in following aspects for the purpose of this experiment^[Potential bias issues about data cleaning in the original paper are elaborated in Discussion section]: 
+
+1. Restrict students who entered the university before 2004 so that students can be potentially observed for two years.
+
+2. Omit students with missing data for any variables of interest, particularly high school grades ($84\%$ of the sample).
+
+3. Restrict students entering the university between age 17 and 21 ($99\%$ of the remaining sample).
+
+4. Restrict students having their academic standing evaluated at the end of Year 1 ($98\%$ of the remaining sample).
+
+&nbsp; &nbsp; After the data cleaning , the original data includes a total of 44362 observations and Table \@ref(tab:allsummary) shows the summary statistics of student observable characteristics and outcomes such as gender, age, birth place, study campus, first language, attempted course credit^[This Canadian university requires at least 20 course credits to graduate.], registration status, GPA, academic standing, high school performance, and graduation status. Since the probation cutoff among campus is different (1.5 in Campus 1 and 2, 1.6 in Campus 3), the data also includes the variable of distance from the campus probation cutoff. Instead of the absolute GPA, the distance from cutoff variable will be used as the forcing variable in the regression discontinuity design which will be discussed in the following section. 
+
+
+## Quasi-Experiment and About Bandwidth Selection 
+
+### Regression Discontinuity Design
+
+&nbsp; &nbsp; Instead of a randomized experiment, this study belongs to the Quasi-experiment because students' academic statues are not randomly assigned by the university administration. As the probation cutoff score is clearly defined and the GPAs affect students' academic statuses, the regression discontinuity design (RDD) is the method used to evaluate the probation impact. Therefore, the cutoff rule assigns students barely below the probation cutoff (On probation) into the treatment group and those barely above the probation cutoff (In good standing) into the comparison group to estimate impact on first-year university students after being placed on academic probation.
+
+### Concerns about Bandwidth Selection {#bandwidth}
+
+&nbsp; &nbsp; In this study, since the RDD only provides the most accurate estimates around the probation cutoff where treatment and comparison are most similar [@cite_impact], it is critical to determine the bandwidth(i.e., students within certain grade points of the probation cutoff score) to maintain the balance of observed characteristics of students around the probation cutoff. In Lindo's original paper, they choose the bandwidth of 0.6 and the following table \@ref(tab:lindo) shows the summary statistics of student observable characteristics within 0.6 GPA. 
+
+```{r, include=FALSE}
+# Lindo's bandwidth used in the original paper
+cut_data_lin <- clean_for_summary %>% 
+  filter(dist_from_cut >= -0.6, dist_from_cut <= 0.6)
+
+#Filter invalid data caused by university administrative error in data reporting
+
+clean_cut2 <- cut_data_lin %>% 
+  filter((dist_from_cut < 0 & probation_year1 ==1)| (dist_from_cut >=0 & probation_year1 ==0) )
+
+clean_cut2 <- clean_cut2 %>% 
+  mutate( status = case_when(probation_year1 == 0 ~ "In Good Standing",
+                             probation_year1 == 1 ~ "On Academic Probation"))
+categorical3 <- clean_cut2 %>% 
+  summary_factorlist("status", c("gender", "birthplace", "study_campus", "first_language"),
+                     p = FALSE, 
+                     digits = c(1,1,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+continuous3 <- clean_cut2 %>% 
+  summary_factorlist("status", c("hsgrade_pct", "totcredits_year1", "age_at_entry"),
+                     p = FALSE,
+                     digits = c(2,2,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+
+combine3 <- rbind(categorical3, continuous3)
+combine3 <- rbind(combine3, c("","","", ""))
+combine3 <- rbind(combine3, c("","","Mean (SD)", "Mean (SD)"))
+combine3 <- combine3[-c(12),]
+combine3$` ` <- replace(combine3$` `, combine3$` ` == "Mean (SD)", "")
+combine3$status <- NULL
+combine3 <- combine3[c(1,3,2,5,4,6:11,15,16,12,13,14),] %>% 
+  mutate(Description = c("","Gender","","Birth Place", "","","Study Campus","","", "First Language","","","","Highschool Grade Percentile","Credits Attempted in First Year", "Age at Entry"))
+```
+
+```{r lindo, tab.cap="Summary Statistics of Students Within 0.6 GPA of Probation Cutoff", echo = FALSE, message = FALSE, warning=FALSE}
+kable(combine3[,c(4,1,2,3)],caption = "Summary Statistics of Students Within 0.6 GPA of Probation Cutoff",
+       booktabs = TRUE, linesep = "") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+&nbsp; &nbsp; According to @cite_GPA_determinants, highschool grade is one of the key determinants of university academic success. Thus, highschool grades could somehow reveal students' study potential in the university, so it is preferable to balance student highschool performance to obtain a more accurate estimate of academic probation. However, the t-test \@ref(tab:ttesthslin) conducted on highschool grade percentile suggests a large difference on highschool performance between student observations in good standing and on academic probation within Lindo's 0.6 GPA bandwidth. In addition, the study on the course load on academic success [@cite_credits] implies that course credit taken by students could reflect student academic ability. Therefore, another t-test \@ref(tab:ttestcrlin) is conducted on total course credits attempted^[Failing a course will not earn course credit but count as an attempted credit] in Year 1 between students in good standing and on probation. The result suggests a difference in the course workload between good standing and probation students within Lindo's 0.6 GPA bandwidth. As a result, the bandwidth that Lindo used in the original paper may include students with different academic potentials, reducing the local estimation accuracy of placing first-year students on academic probation.
+
+```{r ttesthslin, echo=FALSE}
+# conduct the t test on highschool grade between treatment and comparison group within 0.6 GPA cutoff score
+clean_cut_prob1 <- clean_cut2 %>% 
+  filter(dist_from_cut < 0)
+clean_cut_good1 <- clean_cut2 %>% 
+  filter(dist_from_cut >= 0)
+t.test(clean_cut_prob1$hsgrade_pct, clean_cut_good1$hsgrade_pct) %>% 
+  tidy() %>%
+  select(-c(estimate,statistic,parameter, alternative))%>%
+  mutate_if(is.numeric, format, digits=4)%>%
+  rename( `On Probation` = estimate1,
+          `In Good Standing` = estimate2,
+          `P-value` = p.value,
+          `95% CI Low` = conf.low,
+          `95% CI High` = conf.high,
+          Method = method) %>% 
+  kableExtra::kable(caption="Two Sided T-test on Student Highschool Grade Percentile within 0.6 GPA cutoff", align = "cccccc")%>%
+  kable_styling(latex_options = "hold_position")
+```
+
+```{r ttestcrlin, echo=FALSE}
+# conduct the t test on credit attempted between treatment and comparison group within 0.6 GPA cutoff score
+clean_cut_prob1 <- clean_cut2 %>% 
+  filter(dist_from_cut < 0)
+clean_cut_good1 <- clean_cut2 %>% 
+  filter(dist_from_cut >= 0)
+t.test(clean_cut_prob1$totcredits_year1, clean_cut_good1$totcredits_year1) %>% 
+  tidy() %>%
+  select(-c(estimate, statistic,parameter, alternative))%>%
+  mutate_if(is.numeric, format, digits=4)%>%
+  rename( `On Probation` = estimate1,
+          `In Good Standing` = estimate2,
+          `P-value` = p.value,
+          `95% CI Low` = conf.low,
+          `95% CI High` = conf.high,
+          Method = method) %>% 
+  kable(caption="Two Sided T-test on Student Credits Attempted in Year 1 within 0.6 GPA cutoff",align = "cccccc")%>%
+  kable_styling(latex_options = "hold_position")
+```
+
+&nbsp; &nbsp; The following table \@ref(tab:gradingtheme) shows the grading theme of this Canadian university^[This is the current grading theme of this university as of 2021. The grading theme between 1996 and 2005 might be different and could not be retrieved on the university website. While the current grading theme may still serve as a reference of this study]. By applying Lindo's bandwidth of 0.6 GPA, observations barely above the probation cutoff roughly covers students within 60-66 average grade percentage (1.5-2.1 GPA in Campus 1 and 2, 1.6-2.2 GPA in Campus 3), and observations barely below the probation cutoff roughly covers students within 53-59 average grade percentage (0.9-1.5 GPA in Campus 1 and 2, 1.0-1.6 GPA in Campus 3). By converting the grade point value into grade percentage, it might become more obvious that there exists academic performance difference between students in good standing with 66 average grade percentage and students on probation with 53 average grade percentage. So I would argue that the bandwidth used in Lindo's is too wide to maintain similar characteristics, particularly academic potentials, between the probation and good standing students.
+
+```{r gradingtheme, fig.cap='Grading Scheme of the University', echo = FALSE}
+# Grading scheme obtained from the university website
+tibble(
+  "Grade" = list("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"),
+  "Grade Point Value" = list("4.0", "4.0", "3.7", "3.3", "3.0", "2.7", "2.3", "2.0", "1.7", "1.3", "1.0", "0.7", "0.0"),
+  "Grade Percentage" = list("90-100", "85-89","80-84","77-79", "73-76","70-72","67-69","63-66","60-62","57-59","53-56","50-52","0-49"),
+  "Definition" = list("Excellent","","","Good","","","Adequate","","","Marginal","","","Inadequate; no credit obtained")
+) %>% 
+  kable(caption = "Grading Scheme of the University",
+        align = "cccc") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+&nbsp; &nbsp; As a result, I would adjust the bandwidth to: 
+
+1. Balance the observed characteristics between good standing and probation students within the bandwidth.
+
+2. Maintain a sufficient number of observations to obtain sufficient statistical power.
+
+
+```{r, include=FALSE}
+cut_data <- clean_for_summary %>% 
+  filter(dist_from_cut >= -0.2, dist_from_cut <= 0.2)
+
+#Filter invalid data caused by university administrative error in data reporting
+
+clean_cut <- cut_data %>% 
+  filter((dist_from_cut < 0 & probation_year1 ==1)| (dist_from_cut >=0 & probation_year1 ==0) )
+```
+
+
+
+```{r, include=FALSE}
+clean_cut <- clean_cut %>% 
+  mutate( status = case_when(probation_year1 == 0 ~ "In Good Standing",
+                             probation_year1 == 1 ~ "On Academic Probation"))
+categorical2 <- clean_cut %>% 
+  summary_factorlist("status", c("gender", "birthplace", "study_campus", "first_language"),
+                     p = FALSE, 
+                     digits = c(1,1,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+continuous2 <- clean_cut %>% 
+  summary_factorlist("status", c("hsgrade_pct", "totcredits_year1", "age_at_entry"),
+                     p = FALSE,
+                     digits = c(2,2,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+combine2 <- rbind(categorical2, continuous2)
+combine2 <- rbind(combine2, c("","","", ""))
+combine2 <- rbind(combine2, c("","","Mean (SD)", "Mean (SD)"))
+combine2 <- combine2[-c(12),]
+combine2$` ` <- replace(combine2$` `, combine2$` ` == "Mean (SD)", "")
+combine2$status <- NULL
+combine2 <- combine2[c(1,3,2,5,4,6:11,15,16,12,13,14),] %>% 
+  mutate(Description = c("","Gender","","Birth Place", "","","Study Campus","","", "First Language","","","","Highschool Grade Percentile","Credits Attempted in First Year", "Age at Entry"))
+```
+
+```{r mycutoff, tab.cap="Summary Statistics of Students Within 0.2 GPA of Probation Cutoff", echo = FALSE, message = FALSE, warning=FALSE}
+kable(combine2[,c(4,1,2,3)],caption = "Summary Statistics of Students Within 0.2 GPA of Probation Cutoff",
+       booktabs = TRUE, linesep = "") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+&nbsp; &nbsp; Since the probation cutoff GPA lies between "adequate" C- of 1.7 GPA and "marginal" D+ of 1.3 GPA, I adjust the bandwidth to be 0.2 to reduce the academic performance difference. Table \@ref(tab:mycutoff) shows the summary statistics of 4106 student observable characteristics within 0.2 GPA. Even though the t-test (Table \@ref(tab:ttesthsme)) on highschool grade percentile still suggests difference on highschool performance, the estimated highschool grade percentile difference is much less than those within 0.6 bandwidth. Besides, the t-test (Table \@ref(tab:ttestcrme)) on course credit does not show a significant difference in course load within 0.2 bandwidth, so the observed characteristics become more balanced.
+
+
+```{r ttesthsme, echo=FALSE}
+# conduct the t test on highschool grade between treatment and comparison group within 0.2 GPA cutoff score
+clean_cut_prob <- clean_cut %>% 
+  filter(dist_from_cut < 0)
+clean_cut_good <- clean_cut %>% 
+  filter(dist_from_cut >= 0)
+t.test(clean_cut_prob$hsgrade_pct, clean_cut_good$hsgrade_pct) %>% 
+  tidy() %>%
+  select(-c(estimate,statistic,parameter, alternative))%>%
+  mutate_if(is.numeric, format, digits=4)%>%
+  rename( `On Probation` = estimate1,
+          `In Good Standing` = estimate2,
+          `P-value` = p.value,
+          `95% CI Low` = conf.low,
+          `95% CI High` = conf.high,
+          Method = method) %>% 
+  kableExtra::kable(caption="Two Sided T-test on Student Highschool Grade Percentile within 0.2 GPA cutoff", align = "cccccc")%>%
+  kable_styling(latex_options = "hold_position")
+```
+
+```{r ttestcrme, echo=FALSE}
+# conduct the t test on credit attempted between treatment and comparison group within 0.2 GPA cutoff score
+clean_cut_prob <- clean_cut %>% 
+  filter(dist_from_cut < 0)
+clean_cut_good <- clean_cut %>% 
+  filter(dist_from_cut >= 0)
+t.test(clean_cut_prob$totcredits_year1, clean_cut_good$totcredits_year1) %>% 
+  tidy() %>%
+  select(-c(estimate, statistic,parameter, alternative))%>%
+  mutate_if(is.numeric, format, digits=4)%>%
+  rename( `On Probation` = estimate1,
+          `In Good Standing` = estimate2,
+          `P-value` = p.value,
+          `95% CI Low` = conf.low,
+          `95% CI High` = conf.high,
+          Method = method) %>% 
+  kable(caption="Two Sided T-test on Student Credits Attempted in Year 1 within 0.2 GPA cutoff",align = "cccccc")%>%
+  kable_styling(latex_options = "hold_position")
+```
+
+&nbsp; &nbsp; The power of a test is the probability that the test will reject the test null hypothesis to detect a correct alternative hypothesis [@cite_stats_tests]. In this study, as the length of the bandwidth increases, more students are included within the bandwidth. The increase in the number of student raises the power to detect the effect on placing students on probation so that the effect is less likely to happen by chance rather than by the probation cutoff rule. Therefore, I use the `rdpower`[@cite_rdpower] package to calculate the sufficient sample size required (i.e., effect size) to detect the probation effect on (1) Student dropout, (2) Second year GPA and (3) Graduation rate by Year 4. The result as shown below (Table \@ref(tab:powersample)) suggests that the bandwidth of 0.2 GPA with 4106 students (1745 on probation, 2361 in good standing) could raise sufficient statistical power. Further adjustment on the bandwidth might either unbalance student characteristics (Increase bandwidth) or decrease the power of the study (Decrease bandwidth). So I would apply the bandwidth of 0.2 GPA to examine the impact of academic probation in the following session. 
+
+```{r, include=FALSE}
+# Calculate sample size required to raise sufficient power to estimate the probation effect on leaving school
+# Referenced https://rdrr.io/cran/rdpower/man/rdpower-package.html to use the rdsampsi function
+power_data <- clean_for_summary
+Y1 <- power_data$left_school
+R <- power_data$dist_from_cut
+Z1 <- power_data[c("left_school", "dist_from_cut")]
+#test_power <- rdpower(data = Z)
+left_sample <- rdsampsi(data = Z1, cutoff = 0)
+
+# Calculate sample size required to raise sufficient power to estimate the probation effect on second year GPA
+Y2 <- power_data$GPA_year2
+R <- power_data$dist_from_cut
+Z2 <- power_data[c("GPA_year2", "dist_from_cut")]
+#test_power <- rdpower(data = Z)
+GPA_sample <- rdsampsi(data = Z2, cutoff = 0)
+
+# Calculate sample size required to raise sufficient power to estimate the probation effect on graduation by year 4
+Y3 <- power_data$gradin4
+R <- power_data$dist_from_cut
+Z3 <- power_data[c("gradin4", "dist_from_cut")]
+#test_power <- rdpower(data = Z)
+grad4_sample <- rdsampsi(data = Z3, cutoff = 0)
+```
+
+```{r powersample, tab.cap="Sample Required to Raise Sufficient Power", echo = FALSE, message = FALSE, warning=FALSE }
+tibble(
+  Interest = list("Dropout", "GPA in Year 2", "Graduation by Year 4"),
+  `Total Student` = list(left_sample$sampsi.h.tot,GPA_sample$sampsi.h.tot,grad4_sample$sampsi.h.tot),
+  `On Probation` = list(left_sample$sampsi.h.r, GPA_sample$sampsi.h.r, grad4_sample$sampsi.h.r),
+  `In Goodstanding` = list(left_sample$sampsi.h.l, GPA_sample$sampsi.h.l, grad4_sample$sampsi.h.l)
+) %>% 
+  kable(caption = "Sample Required to Raise Sufficient Power", align = "cccc") %>% 
+  kable_styling(latex_options = "hold_position") %>% 
+  add_footnote("The significance level is 0.05 and desired power is 0.8.", notation = "number")
+```
+
+
+
+# Model
+
+## Test on Regression Discontinuity Design Assumptions
+
+&nbsp; &nbsp; Before applying the regression discontinuity design in this study, it is important to test its assumptions to ensure the constructed RDD model accurately represent the impact of academic probation on first-year students. Several assumptions of RDD are:
+
+1. The cutoff is clearly defined, unique [@cite_impact]: This Canadian university clearly defined the academic probation rule (1.5 GPA in Campus 1 and 2, 1.6 GPA in Campus 3). There is also no other academic status (Other than in good standing and on probation) defined around the probation cutoff score, so this assumption is satisfied.
+
+2. The score of the individual free of manipulation [@cite_impact]: The university Code of Behavior on Academic Matters ensures that student GPA cannot be manipulated, so this assumption is satisfied.
+
+3. The forcing variable should be continuous [@cite_Rohan_Chapter15]: as mentioned in Data Section \@ref(od), this study use student GPA distance from cutoff as the forcing variable. Since the GPA is a continuous variable, the GPA distance from cutoff is also continuous so this assumption is satisfied.
+
+4. The treatment and comparison units are most similar [@cite_impact]: as mentioned in Data Section \@ref(bandwidth), I would apply the adjusted bandwidth to balance the characteristics between students on probation barely below the cutoff and in good standing barely above the cutoff.
+
+&nbsp; &nbsp; Since the academic probation cutoff rule is known, one may question that students barely below the probation cutoff would study harder to avoid being placed on academic probation. However, the survey conducted in Lindo's paper suggests that first year students are generally less familiar with university policies to know the GPA required to avoid academic probation. And Lindo also finds no evidence that students' grades are related to their knowledge about academic probation [@cite_original]. So first year students are not likely to "play with" the university policy to avoid academic probation. The following figure (Figure \@ref(fig:histcutoff)) shows the distribution of the GPA distance from probation cutoff of all students. There is a smooth increase on the frequency distribution of the student GPA until reaching students' average GPA (GPA distance from probation around 1) and there is no obvious jump on either side of the probation cutoff. So students on either side of the probation cutoff is balanced as suggested in Data Section \@ref(bandwidth).
+
+```{r histcutoff, fig.align='center', fig.cap="Distribution of Year 1 GPA relative to Probation Cutoff for All Students", fig.width=8, fig.height=4, echo= FALSE, message=FALSE, warning=FALSE}
+# Histogram of the distribution of GPA from cutoff
+
+ggplot(clean_for_summary, aes(x = dist_from_cut))+
+  geom_histogram(aes(y  = stat(count)), binwidth = 0.125, color = "black", fill = "#33CCCC")+
+  geom_vline(xintercept = 0, linetype = "dotted")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+  
+```
+
+## Sharp RDD Model
+
+### Model Background
+
+&nbsp; &nbsp; The university policy ensures that all first year students below the probation cutoff will be placed into academic probation (as shown in Figure \@ref(fig:statsassign))^[The original data shows university administrative errors in data reporting that falsely place students either above the cutoff on probation or below the cutoff in good standing (98 out of 44362 student observations). These dirty data are removed from this study.]. So the discontinuity around the cutoff is "sharp". 
+
+&nbsp; &nbsp; By placing students on academic probation, the university informs these students an urge to improve their academic performance to prevent further escalating penalties such as suspension. According to ${B}\acute{e}{nabou}$ and Tirole's model of agents' responses to a performance standard [@cite_model_background], the probation policy as a negative incentive may result in the following outcomes:
+
+1. Discourage some students to continue their study in the university, leading to an increasing chances of student dropout.
+
+2. Encourage the rest of students to improve their GPA, leading to an improve of GPA in the second year.
+
+&nbsp; &nbsp; Since students on probation status are allowed to take limited course credits^[This university has the up-to-date policy regarding to credit restrictions on probation students. However, this policy varies across campuses and the rule during the data collected period (1996-2005) could not be retrieved from the university website.], unless students actively seek to earn credits in subsequent academic year (e.g., enroll in summer course, taking more courses after going back to good standing), this policy would also: 
+
+3. Postpone the graduation, leading to an decreasing chances of graduating within certain time periods.
+
+```{r statsassign, fig.align='center', fig.cap="Distribution of Year 1 GPA relative to Probation Cutoff for All Students", fig.width=6, fig.height=3, echo= FALSE, message=FALSE, warning=FALSE}
+# Check if the RDD is "sharp" or "fuzzy"
+ggplot(clean_cut,aes(x = dist_from_cut, y = status, group = status, color = status))+
+  geom_point(alpha = 0.05)+
+  geom_smooth(method = "lm")+
+  theme_minimal()+
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5))+
+  labs( title = "Stuent Academic Status",
+        y ="Academic Status",
+        x = "Year 1 GPA minus Probation Cutoff")
+```
+
+
+
+&nbsp; &nbsp; In addition, previous studies have suggested that:
+
+* There is gender difference in academic performance [@cite_gender_grade] and females appears to be more vulnerable to internal distress than males [@cite_gender_stress], so students with different gender may response quite differently after being placed on probation.
+
+* Students with higher highschool grade are more likely to succeed in the university [@cite_GPA_determinants]. Even though some students with satisfactory highschool performance are unfortunately placed on academic probation (Possibly due to lack of university adaptation), they generally hold higher study potential than those with relatively poor highschool performance, triggering faster recovery from academic probation. So students with different highschool performance may response differently towards probation.
+
+* The level of English language proficiency is important to academic success [@cite_language]. Students whose first language are not English may hold different level of English proficiency than English native speaking students. Similar to students with high highschool performance, English native speaking students may recover faster from academic probation. So students with different first language may also response differently towards probation.
+
+### Model Construction
+
+&nbsp; &nbsp; Taking all of the above into consideration, I propose the following model to evaluate the impact on first year students after being placed on academic probation:
+
+$$Y_{i} = \beta_{0}Proation_{i} + f({Cutoff}\:{Distance}_{i}) + \alpha_{1}Gender_{i}+\alpha_{2}HighSchool_{i}+\alpha_{3}Language_{i} +\epsilon_{i}$$
+
+where 
+
+* $Y_{i}$ is first year student outcomes of interest for student $i$, which are (1) Probability of dropout after the first academic year, (2) Annual GPA in the second academic year, and (3) Probability of graduating by the fourth year after entering the university.
+
+* $Probation_{i}$ is an indicator variable to show whether the student $i$ is placed on academic probation or not in the first year. And its coefficient $\beta_{0}$ is the estimate of impact on first year students after being placed on academic probation that we are primarily interested in.
+
+* $f({Cutoff}\:{Distance}_{i})$ is the function to represent the student $i$'s first year GPA distance from the cutoff. Since the first order polynomial is used during the power analysis to determine required student samples (Data Section \@ref(bandwidth)), it will also be applied in building the sharp RDD model^[Adjusting the order of distance from cutoff function does not affect the results. Lindo's original paper also used first order polynomial on distance from the cutoff to estimate probation outcomes].
+
+* $Gender_{i}$ is an indicator variable to show whether the student $i$ is male or female. Its coefficient $\alpha_{1}$ is the estimate of gender difference in response to academic probation.
+
+* $HighSchool_{i}$ is an indicator variable to show whether the student $i$ has a satisfactory highschool performance (Highschool Grade Percentile $>$ 50) or a relatively poor highschool performance (Highschool Grade Percentile $\leq$ 50). Its coefficient $\alpha_{2}$ is the estimate of highschool performance difference in response to academic probation.
+
+
+* $Language_{i}$ is an indicator variable to show whether the student $i$'s first language is English or other language. Its coefficient $\alpha_{3}$ is the estimate of first language difference in response to academic probation.
+
+&nbsp; &nbsp; Since the dropout decision of an individual student is whether leaving the university or not, it is a dichotomous variable. Therefore, I would use the logistic regression to estimate the probation impact on probability of student dropout. Similarly, the graduation decision of whether graduating by Year 4 or not is also a dichotomous variable. So I would also use the logistic regression to estimate the probation impact on probability of student graduating by Year 4. 
+
+&nbsp; &nbsp; As the GPA is an continuous variable, I would use the linear regression to estimate the probation impact on student annual GPA in the second academic year. All of relevant model results will be discussed in the Results Section \@ref(result).
+
+# Results {#result}
+
+## Impact on Dropout
+
+&nbsp; &nbsp; The imme
+
+
+```{r, include=FALSE}
+# import data
+clean_cut <- read.csv(here("inputs/data/bandwidth02.csv"))
+clean_cut2 <- read.csv(here("inputs/data/bandwidth03.csv"))
+clean_cut3<- read.csv(here("inputs/data/bandwidth06.csv"))
+```
+
+```{r, include=FALSE}
+class(clean_cut$status)
+clean_cut$status <- as.factor(clean_cut$status)
+levels(clean_cut$status)
+# Set students on academic probation as the baseline group
+clean_cut$status <- relevel(clean_cut$status, "On Academic Probation")
+clean_cut2$status <- as.factor(clean_cut2$status)
+clean_cut2$status <- relevel(clean_cut2$status, "On Academic Probation")
+clean_cut3$status <- as.factor(clean_cut3$status)
+clean_cut3$status <- relevel(clean_cut3$status, "On Academic Probation")
+```
+
+
+```{r, include=FALSE}
+# Logistic Regression to estimate the impact of probation on student dropout
+
+# Bandwidth 0.2
+dropout_02 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut)
+
+#summary(dropout_02)
+
+# Bandwidth 0.3
+dropout_03 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut2)
+
+# Bandwidth 0.6
+dropout_06 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut3)
+```
+
+
+```{r dropsummary, tab.cap="Logistic Regression for the Impact of Academic Probation on Student Dropout", echo = FALSE, message = FALSE, warning=FALSE}
+
+# Reference the following to customize modelsummary table: https://vincentarelbundock.github.io/modelsummary/articles/modelsummary.html
+# Note: Broom package could not exponentiate the standard error right now
+# Reference: https://github.com/tidymodels/broom/issues/422
+modelsummary(list("0.2 GPA Bandwidth" = dropout_02, "0.3 GPA Bandwidth" = dropout_03,"0.6 GPA Bandwidth" =  dropout_06),
+             statistic = "{std.error} ({p.value})",
+             stars =TRUE,
+             coef_map = c("(Intercept)" = "Constant", "statusIn Good Standing" = "In Good Standing", "dist_from_cut" = "f(Cutoff Distance)","genderMale" = "Gender Male", "highHS" = "Highschool Above Average", "first_languageOther" = "First Language Not English "),
+             exponentiate = TRUE,
+             title = "Logistic Regression for the Impact of Academic Probation on Student Dropout",
+             gof_omit = "BIC") %>% 
+  add_footnote("Odds Ratio in First Row. Standard Error of Log of Odds in Second Row. P-value in Parentheses", notation = "number") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+```{r dropfig, fig.align='center', fig.cap="Academic Probation Impact on Dropout", fig.width=8, fig.height=4, echo= FALSE, message=FALSE, warning=FALSE}
+clean_cut$probation_year1 <- as.factor(clean_cut$probation_year1)
+ggplot(data= clean_cut, aes(x = dist_from_cut, y = left_school, color = status))+
+  geom_point(alpha = 0.05)+
+  geom_smooth(method = "glm", method.args = list(family = 'binomial'))+
+  theme_light()+
+  theme(legend.title = element_blank(), legend.position = "bottom", plot.title = element_text(hjust = 0.5))+
+  guides(color=guide_legend(override.aes=list(fill=NA)))+
+  labs(title = "Academic Probation Impact on Dropout",
+       x = "Year 1 GPA minus Probation Cutoff",
+       y = "Left University")
+```
+
+
+
+
+## Impact on Subsequent Performance
+
+```{r, include=FALSE}
+# Linear Regression to estimate the impact of probation on student Year 2 GPA
+
+# Bandwidth 0.2
+gpa_02 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut)
+#summary(gpa_02)
+# Bandwidth 0.3
+gpa_03 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut2)
+
+# Bandwidth 0.6
+gpa_06 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut3)
+```
+
+```{r gpasummary, tab.cap="Linear Regression for the Impact of Academic Probation on Student Year 2 GPA", echo = FALSE, message = FALSE, warning=FALSE}
+
+modelsummary(list("0.2 GPA Bandwidth" = gpa_02, "0.3 GPA Bandwidth" = gpa_03,"0.6 GPA Bandwidth" =  gpa_06),
+             statistic = "{std.error} ({p.value})",
+             stars =TRUE,
+             coef_map = c("(Intercept)" = "Constant", "statusIn Good Standing" = "In Good Standing", "dist_from_cut" = "f(Cutoff Distance)","genderMale" = "Gender Male", "highHS" = "Highschool Above Average", "first_languageOther" = "First Language Not English "),
+             title = "Linear Regression for the Impact of Academic Probation on Student Year 2 GPA",
+             gof_omit = "BIC") %>% 
+  add_footnote("Regression Coefficient in First Row. Standard Error in Second Row. P-value in Parentheses", notation = "number") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+
+```{r gpafig, fig.align='center', fig.cap="Academic Probation Impact on Year 2 GPA", fig.width=8, fig.height=4, echo= FALSE, message=FALSE, warning=FALSE}
+ggplot(data= clean_cut, aes(x = dist_from_cut, y = GPA_year2, color = status))+
+  geom_point(alpha = 0.05)+
+  geom_smooth(method = "lm")+
+  theme_light()+
+  theme(legend.title = element_blank(), legend.position = "bottom", plot.title = element_text(hjust = 0.5))+
+  guides(color=guide_legend(override.aes=list(fill=NA)))+
+  labs(title = "Academic Probation Impact on Year 2 GPA",
+       x = "Year 1 GPA minus Probation Cutoff",
+       y = "Year 2 GPA")
+```
+
+## Impact on Graduation
+
+```{r, include=FALSE}
+# Logistic Regression to estimate the impact of probation on student dropout
+
+# Bandwidth 0.2
+grad_02 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut)
+
+#summary(grad_02)
+
+# Bandwidth 0.3
+grad_03 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut2)
+
+# Bandwidth 0.6
+grad_06 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut3)
+#summary(grad_06)
+```
+
+```{r gradsummary, tab.cap="Logistic Regression for the Impact of Academic Probation on Student Graduation by Year 4", echo = FALSE, message = FALSE, warning=FALSE}
+modelsummary(list("0.2 GPA Bandwidth" = grad_02, "0.3 GPA Bandwidth" = grad_03,"0.6 GPA Bandwidth" =  grad_06),
+             statistic = "{std.error} ({p.value})",
+             stars =TRUE,
+             coef_map = c("(Intercept)" = "Constant", "statusIn Good Standing" = "In Good Standing", "dist_from_cut" = "f(Cutoff Distance)","genderMale" = "Gender Male", "highHS" = "Highschool Above Average", "first_languageOther" = "First Language Not English "),
+             exponentiate = TRUE,
+             title = "Logistic Regression for the Impact of Academic Probation on Student Graduation by Year 4",
+             gof_omit = "BIC") %>% 
+  add_footnote("Odds Ratio in First Row. Standard Error of Log of Odds in Second Row. P-value in Parentheses", notation = "number") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+```{r gradfig, fig.align='center', fig.cap="Academic Probation Impact on Graduation by Year 4", fig.width=6, fig.height=3, echo= FALSE, message=FALSE, warning=FALSE}
+clean_cut$probation_year1 <- as.factor(clean_cut$probation_year1)
+ggplot(data= clean_cut, aes(x = dist_from_cut, y = gradin4, color = status))+
+  geom_point(alpha = 0.05)+
+  geom_smooth(method = "glm", method.args = list(family = 'binomial'))+
+  theme_light()+
+  theme(legend.title = element_blank(), legend.position = "bottom", plot.title = element_text(hjust = 0.5))+
+  guides(color=guide_legend(override.aes=list(fill=NA)))+
+  labs(title = "Academic Probation Impact on Graduation by Year 4",
+       x = "Year 1 GPA minus Probation Cutoff",
+       y = "Graduate by Year 4")
+```
+
+# Discussion
+
+## Summary
+
+## Bias
+
+student family background
+https://www.tandfonline.com/doi/abs/10.1080/15235882.1997.10162712
+
+
+### Evaluations minimum credits and NCR, late withdraw Policy (Refer I institutional Background footnote 7)
+
+## Casual Inference
+
+## External Validity and Internal Validity
+
+## Simpson's Paradox about Campus Variation
+
+## Weaknesses and next steps
+
+Weaknesses and next steps [@cite_success]should also be included.
+
+\newpage
+
+\appendix
+
+# Appendix 1 Letter Sent to Students at Campus 2
+
+&nbsp; &nbsp; Dear < first name >:
+
+&nbsp; &nbsp; Your academic record indicates that you are experiencing challenges with your studies at xxxxxxxxxxx. As a result, you have been placed “On Probation” at the end of the xxxxxxx session. “On Probation” is an academic status applied to a student if he or she:
+
+1. Is having difficulty achieving a term average of at least 1.7 GPA or a yearly average of 1.5 CGPA.
+
+2. Is having difficulty meeting performance expectations and/or deadlines as outlined by the course instructor.
+
+3. Is having difficulty achieving the minimum grades required for graduation.
+
+&nbsp; &nbsp; A student who at the end of any session during which they are on probation has a cumulative GPA of less than 1.5 and a sessional of less than 1.7 shall be suspended. Therefore, it is imperative that you seek assistance to improve your academic standing to avoid further sanction.
+
+&nbsp; &nbsp; Rest assured that you can improve this status and that xxxxxxxxxxxx offers assistance at many junctions. First, you can access help by making an appointment with an academic advisor in the Office of the Registrar to develop strategies to improve your academic record. Book an appointment at xxx-xxx-xxxx or online at www.xxxxxxxxx. Second, contact xxxxxxxx for assistance with study habits, note taking, effective research, time management, study groups, and peer mentors. Finally, the xxxxxxxxx offers skills and interest testing which can help you focus on your strengths. 
+
+&nbsp; &nbsp; We know that you are capable of academic success, based on your academic record at admission. A good academic record is essential for entry to Limited Enrolment programs, graduate school, and professional schools. Let us review your goals and help you develop a plan to achieve them.
+
+&nbsp; &nbsp; You have the opportunity and available support to be successful. Please utilize our services to insure your future success.
+
+&nbsp; &nbsp; For further information on academic status, please refer to xxxxxxxx of the Academic Calendar or here: http://www.xxxxxxxxxxxxxx.
+
+# Appendix 2 Regression Diag
+
+
+\newpage
+
+
+# References
+
+

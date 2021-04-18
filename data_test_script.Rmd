@@ -1,0 +1,362 @@
+---
+title: "data section test script"
+author: "Hong Shi"
+date: "4/8/2021"
+output: pdf_document
+---
+```{r}
+library(tidyverse)
+library(here)
+library(haven)
+library(rdrobust)
+library(finalfit)
+```
+
+```{r}
+clean_data <- read.csv(here("inputs/data/cleaned_original.csv"))
+```
+
+
+```{r}
+# create column for summary statistics
+# Categorical variables: Sex()
+clean_for_summary <-  clean_data %>% 
+  mutate( gender = 
+            case_when(sex == "M" ~ "Male",
+                      sex == "F" ~ "Female"), 
+          birthplace = case_when( bpl_north_america == 1 ~ "North America",
+                                        bpl_asia == 1 ~ "Asia",
+                                        bpl_other == 1 ~ "Other"),
+          study_campus = case_when(loc_campus1 == 1 ~ "Campus 1",
+                                        loc_campus2 == 1 ~ "Campus 2",
+                                        loc_campus3 == 1 ~ "Campus 3"),
+          first_language = case_when(mtongue == "English" ~ "English",
+                                       mtongue == "Other" ~ "Other"),
+          on_probation_after_1st_year = case_when( probation_year1 == 1 ~ "Yes",
+                                                     probation_year1 == 0 ~ "No"),
+          ever_on_probation = case_when( probation_ever == 1 ~ "Yes",
+                                           probation_ever == 0 ~ "No"),
+          left_university_after_1st_evaluation = case_when(left_school == 1 ~ "Yes",
+                                                             left_school == 0 ~ "No"),
+          ever_suspended = case_when(suspended_ever == 1 ~ "Yes",
+                                       suspended_ever == 0 ~ "No"),
+          graduated_by_year4 = case_when(gradin4 == 1 ~ "Yes",
+                                            gradin4 == 0 ~ "No"),
+          graduated_by_year5 = case_when(gradin5 == 1 ~ "Yes",
+                                            gradin5 == 0 ~ "No"),
+          graduated_by_year6 = case_when(gradin6 == 1 ~ "Yes",
+                                            gradin6 == 0 ~ "No"),
+          all_students = case_when(all == 1 ~ "All Students" ))
+```
+
+```{r}
+summary_factorlist
+```
+```{r}
+categorical1 <- clean_for_summary %>% 
+  summary_factorlist("all_students", c("gender", "birthplace", "study_campus", "first_language", "on_probation_after_1st_year", "ever_on_probation", "left_university_after_1st_evaluation", "ever_suspended", "graduated_by_year4", "graduated_by_year5", "graduated_by_year6"),
+                     p = FALSE, 
+                     digits = c(1,1,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ") # %>%
+#  rename(N = "Total N", Missing = "Missing N") %>%
+#  knitr::kable(caption = "Summary of Observable Characteristics of All Students",
+#               booktabs = TRUE, linesep = "") 
+```
+
+```{r}
+#clean_for_summary$year2_dist_from_cut
+continuous1 <- clean_for_summary %>% 
+#  select(`All Students`, Gender) %>%
+  summary_factorlist("all_students", c("hsgrade_pct", "totcredits_year1", "age_at_entry","GPA_year1", "dist_from_cut","GPA_year2", "year2_dist_from_cut"),
+                     p = FALSE,
+                     digits = c(2,2,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ") #%>% 
+ # knitr::kable(caption = "Summary of Observable Characteristics of All Students",
+ #              booktabs = TRUE, linesep = "") 
+```
+
+```{r}
+combine1 <- rbind(categorical1, continuous1)
+combine1 <- rbind(combine1, c("Characteristics", "",""))
+combine1 <- rbind(combine1, c("Outcomes", "", ""))
+combine1 <- rbind(combine1, c("","","Mean (SD)"))
+combine1 <- rbind(combine1, c("","","Mean (SD)"))
+combine1 <- rbind(combine1, c("","",""))
+combine1 <- rbind(combine1, c("","",""))
+combine1 <- rbind(combine1, c("","",""))
+combine1$` ` <- replace(combine1$` `, combine1$` ` == "Mean (SD)", "")
+```
+
+
+```{r}
+combine1$all_students <- NULL
+combine1 <- combine1[c(34,1,3,2,5,4,6:11,38,36,27:29,39,34,26,13,12,15,14,17,16,19,18,21,20,23,22,25,24,40,37,30,31,32,33),] %>% 
+  mutate(Description = c("Characteristics","","Gender","","Birth Place", "","","Study Campus","","", "First Language","","","","Highschool Grade Percentile","Credits Attempted in First Year", "Age at Entry","", "Outcomes","","On Probation After 1st Year","","Ever On Probation", "", "Left University After 1st Evaluation", "","Ever Suspended","","Graduated by Year 4","", "Graduated by Year 5","", "Graduated by Year 6","","","","First Year GPA","Distance from Cutoff in 1st Year","Second Year GPA", "Distance from Cutoff in 2nd Year"))
+```
+
+```{r}
+?summary_factorlist()
+```
+
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+```
+
+```{r}
+kable(combine1[,c(3,1,2)],caption = "Summary Statistics of All Students",
+       booktabs = TRUE, linesep = "") %>% 
+  kable_styling() %>% 
+  add_footnote("For all characteristics and outcomes except graduation rates and distance from cutoff and GPA in 2nd year. The entire dataset consists of 44362 students. Graduation rate samples are 30017 for Year 4, 24581 for Year 5, 19757 for Year 6.38576 students have GPA observed in 2nd Year", notation = "number")
+```
+
+```{r}
+unique(clean_for_summary$)
+```
+
+```{r}
+graddata <- original_data %>% select(gradin4, gradin5, gradin6, year2_dist_from_cut)
+length(original_data$all)
+grad_sample <- c(length(original_data$all), length(original_data$all), length(original_data$all), length(original_data$all)) - sapply(graddata,function(x) sum(is.na(x)))
+grad_sample
+```
+```{r}
+# Histogram of the distribution of GPA from cutoff
+
+ggplot(clean_for_summary, aes(x = dist_from_cut))+
+  geom_histogram(aes(y  = stat(count)), binwidth = 0.125, color = "black", fill = "#33CCCC")+
+#  geom_density(aes(y = ..density..))+
+  geom_vline(xintercept = 0, linetype = "dotted")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+  
+```
+```{r}
+test_clean %>% 
+  ggplot(aes(x = dist_from_cut,
+             y = probation_year1,
+             group = probation_year1)) +
+  geom_point(alpha = 0.2) +
+ # geom_smooth(data = clean_for_summary %>% filter(dist_from_cut >= 0), 
+#              method='lm') +
+ # geom_smooth(data = clean_for_summary %>% filter(dist_from_cut <0), 
+  #            method='lm') +
+  theme_minimal() +
+  labs(x = "Year 1 GPA minus Probation Cutoff",
+       y = "Probation Status")
+```
+
+```{r}
+test_clean <- clean_for_summary
+test_clean <- test_clean %>% 
+  mutate(probation_indicator = ifelse(dist_from_cut_med10 > 0 , 1 , 0))
+
+```
+
+```{r}
+test_clean <- clean_for_summary %>% 
+  filter(dist_from_cut >= -0.2, dist_from_cut <= 0.2)
+```
+
+```{r}
+cut_data <- clean_for_summary %>% 
+  filter(dist_from_cut >= -0.2, dist_from_cut <= 0.2)
+```
+
+```{r}
+clean_cut <- cut_data %>% 
+  filter((dist_from_cut < 0 & probation_year1 ==1)| (dist_from_cut >=0 & probation_year1 ==0) )
+```
+
+```{r}
+clean_cut <- clean_cut %>% 
+  mutate( status = case_when(probation_year1 == 0 ~ "In Good Standing",
+                             probation_year1 == 1 ~ "On Academic Probation"))
+
+categorical2 <- clean_cut %>% 
+  summary_factorlist("status", c("gender", "birthplace", "study_campus", "first_language"),
+                     p = FALSE, 
+                     digits = c(1,1,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+continuous2 <- clean_cut %>% 
+  summary_factorlist("status", c("hsgrade_pct", "totcredits_year1", "age_at_entry"),
+                     p = FALSE,
+                     digits = c(2,2,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+```
+
+```{r}
+combine2 <- 
+```
+
+
+```{r}
+combine2 <- rbind(categorical2, continuous2)
+combine2 <- rbind(combine2, c("","","", ""))
+combine2 <- rbind(combine2, c("","","Mean (SD)", "Mean (SD)"))
+combine2 <- combine2[-c(12),]
+combine2$` ` <- replace(combine2$` `, combine2$` ` == "Mean (SD)", "")
+```
+
+```{r}
+combine2$status <- NULL
+combine2 <- combine2[c(1,3,2,5,4,6:11,15,16,12,13,14),] %>% 
+  mutate(Description = c("","Gender","","Birth Place", "","","Study Campus","","", "First Language","","","","Highschool Grade Percentile","Credits Attempted in First Year", "Age at Entry"))
+```
+
+```{r}
+kable(combine2[,c(4,1,2,3)],caption = "Summary Statistics of Students Within 0.2 GPA of Probation Cutoff",
+       booktabs = TRUE, linesep = "") %>% 
+  kable_styling()
+```
+
+```{r}
+combine2
+```
+
+
+```{r}
+clean_for_summary %>% filter(dist_from_cut < 0, probation_year1 !=1, suspended_year1 !=1)
+```
+
+
+
+```{r}
+library(rdd)
+is.na(clean_for_summary$year2_dist_from_cut)
+find_b <- clean_for_summary %>% 
+  filter(GPA_year2 != 0)
+IKbandwidth(clean_for_summary$dist_from_cut, clean_for_summary$GPA_year2, cutpoint = 0, verbose = TRUE)
+```
+
+```{r}
+sum(cut_data$bpl_north_america)
+sum(na.omit(cut_data$bpl_asia))
+sum(cut_data$bpl_other)
+second_cut <- raw_data %>% 
+  filter(dist_from_cut >= -0.2, dist_from_cut <= 0.2)
+```
+
+```{r}
+reg1 <- felm(hsgrade_pct~gpalscutoff+gpaXgpalscutoff+gpaXgpagrcutoff|0|0|clustervar,
+             data = subset(raw_data, dist_from_cut >= -0.3 & dist_from_cut <= 0.3))
+summary(reg1)
+modelsummary::modelsummary(reg1)
+stargazer(reg1)
+```
+```{r}
+table2 <- data.frame(matrix(NA, nrow=5, ncol=9))
+cut_data <- raw_data %>% filter(dist_from_cut >= -0.3 & dist_from_cut <= 0.3)
+colnames(table2) <- c("hsgrade_pct", "totcredits_year1", "age_at_entry", "male", "bpl_north_america", "english", "loc_campus1", "loc_campus2", "loc_campus3")
+try <- colnames(table2)
+try
+rownames(table2) <- c("b(gpalscutoff)", "se(gpalscutoff)", "b(const)", "se(const)", "N")
+```
+```{r}
+class(cut_data$gpasqXgpagrcutoff)
+cut_data$gpalscutoff <- as.numeric(cut_data$gpalscutoff)
+class(cut_data$gpaXgpagrcutoff)
+cut_data[,colnames(table2)[2]]
+```
+
+```{r}
+cut_data <- cut_data[complete.cases(cut_data),]
+```
+
+```{r}
+used <- cut_data[,try]
+```
+```{r}
+for(i in 1:9){
+reg <- felm(try~gpalscutoff+gpaXgpalscutoff+gpaXgpagrcutoff|0|0|clustervar,
+             data = subset(raw_data, dist_from_cut >= -0.3 & dist_from_cut <= 0.3))
+  table2[1,i] <- tidy(reg)[2,2]
+  table2[2,i] <- tidy(reg)[2,3] 
+  table2[3,i] <- tidy(reg)[1,2]
+  table2[4,i] <- tidy(reg)[1,3] 
+  table2[5,i] <- summary(reg)$N
+}
+```
+```{r}
+cut_data[is.na(cut_data$bpl_asia),]
+```
+```{r}
+head(original_data[is.na(original_data$bpl_asia),],50)
+```
+
+
+```{r}
+for(i in 1:9){
+  reg <- felm(try~gpalscutoff+gpaXgpalscutoff+
+                gpaXgpagrcutoff|0|0|clustervar, data = cut_data)
+  table2[1,i] <- tidy(reg)[2,2]
+  table2[2,i] <- tidy(reg)[2,3] 
+  table2[3,i] <- tidy(reg)[1,2]
+  table2[4,i] <- tidy(reg)[1,3] 
+  table2[5,i] <- summary(reg)$N
+}
+cut_data$hsg
+felm(sex ~ GPA_year1, data = cut_data)
+```
+
+```{r}
+length(cut_data$totcredits_year1)
+library(kableExtra)
+```
+```{r gradingtheme, fig.cap='Grading Scheme of the University', echo = FALSE}
+# Grading scheme obtained from the university website
+tibble(
+  "Grade" = list("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"),
+  "Grade Point Value" = list("4.0", "4.0", "3.7", "3.3", "3.0", "2.7", "2.3", "2.0", "1.7", "1.3", "1.0", "0.7", "0.0"),
+  "Grade Percentage" = list("90-100", "85-89","80-84","77-79", "73-76","70-72","67-69","63-66","60-62","57-59","53-56","50-52","0-49"),
+  "Definition" = list("Excellent","","","Good","","","Adequate","","","Marginal","","","Inadequate; no credit obtained")
+) %>% 
+  kable(caption = "Grading Scale of the University",
+        align = "cccc") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+```{r}
+# Histogram of the distribution of GPA from cutoff
+
+ggplot(clean_for_summary, aes(x = GPA_year1))+
+  geom_histogram(aes(y  = stat(count)), binwidth = 0.125, color = "black", fill = "#33CCCC")+
+#  geom_density(aes(y = ..density..))+
+  geom_vline(xintercept = 1.55, linetype = "dotted")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+```
+
+
+```{r}
+na_count <- sapply(original_data, function(y) sum(length(which(is.na(y)))))
+na_count<- data.frame(na_count)
+na_count
+```
+
