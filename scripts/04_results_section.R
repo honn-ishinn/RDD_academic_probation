@@ -24,8 +24,8 @@ library(modelsummary)
 
 clean_data <- read.csv(here("inputs/data/cleaned_original.csv"))
 clean_cut <- read.csv(here("inputs/data/bandwidth02.csv"))
-clean_cut2 <- read.csv(here("inputs/data/bandwidth03.csv"))
-clean_cut3<- read.csv(here("inputs/data/bandwidth06.csv"))
+clean_cut2 <- read.csv(here("inputs/data/bandwidth06.csv"))
+clean_cut3<- read.csv(here("inputs/data/bandwidth03.csv"))
 
 #############################
 #### Subsection: Dropout ####
@@ -50,10 +50,10 @@ dropout_02 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first
 #summary(dropout_02)
 
 # Bandwidth 0.3
-dropout_03 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut2)
+dropout_03 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut3)
 
 # Bandwidth 0.6
-dropout_06 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut3)
+dropout_06 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut2)
 
 #### Summary Table ####
 
@@ -93,10 +93,10 @@ ggplot(data= clean_cut, aes(x = dist_from_cut, y = left_school, color = status))
 gpa_02 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut)
 #summary(gpa_02)
 # Bandwidth 0.3
-gpa_03 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut2)
+gpa_03 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut3)
 
 # Bandwidth 0.6
-gpa_06 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut3)
+gpa_06 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut2)
 
 #### Summary Table ####
 
@@ -133,10 +133,10 @@ grad_02 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_langua
 #summary(grad_02)
 
 # Bandwidth 0.3
-grad_03 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut2)
+grad_03 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut3)
 
 # Bandwidth 0.6
-grad_06 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut3)
+grad_06 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut2)
 #summary(grad_06)
 
 #### Summary Table ####
@@ -163,3 +163,20 @@ ggplot(data= clean_cut, aes(x = dist_from_cut, y = gradin4, color = status))+
   labs(title = "Academic Probation Impact on Graduation by Year 4",
        x = "Year 1 GPA minus Probation Cutoff",
        y = "Graduate by Year 4")
+
+#### Additional check with 0.1 GPA bandwidth ####
+
+# The 
+
+clean_cut1 <- clean_cut %>% 
+  filter(dist_from_cut >= -0.1, dist_from_cut <= 0.1)
+
+dropout_01 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut1)
+summary(dropout_01)
+
+gpa_01 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut1)
+summary(gpa_01)
+
+grad_01 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut1)
+summary(grad_01)
+

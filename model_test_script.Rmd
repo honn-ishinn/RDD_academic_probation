@@ -94,8 +94,20 @@ summary(test_male)
 rdplot(y = clean_male$left_school, x = clean_male$dist_from_cut, c = 0, p = 1, covs = cbind(clean_male$highHS, clean_male$first_language), title = "GPA by Year 4")
 ```
 
+```{r}
+gpa_camp2 <- lm(GPA_year2 ~ status + dist_from_cut + gender + first_language + highHS*study_campus, data = clean_cut)
+summary(gpa_camp2)
+```
 
+```{r}
+dropout_camp2 <- glm(left_school ~ status + dist_from_cut + gender + highHS*study_campus + first_language ,family = "binomial", data = clean_cut)
+summary(dropout_camp2)
+```
 
+```{r}
+grad_camp2 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS*study_campus + first_language ,family = "binomial", data = clean_cut)
+summary(grad_camp2)
+```
 
 
 
