@@ -164,19 +164,3 @@ ggplot(data= clean_cut, aes(x = dist_from_cut, y = gradin4, color = status))+
        x = "Year 1 GPA minus Probation Cutoff",
        y = "Graduate by Year 4")
 
-#### Additional check with 0.1 GPA bandwidth ####
-
-# The 
-
-clean_cut1 <- clean_cut %>% 
-  filter(dist_from_cut >= -0.1, dist_from_cut <= 0.1)
-
-dropout_01 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut1)
-summary(dropout_01)
-
-gpa_01 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut1)
-summary(gpa_01)
-
-grad_01 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut1)
-summary(grad_01)
-

@@ -110,12 +110,120 @@ summary(grad_camp2)
 ```
 
 
+```{r}
+clean_cut1 <- clean_cut %>% 
+  filter(dist_from_cut >= -0.1, dist_from_cut <= 0.1)
+
+dropout_01 <- glm(left_school ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut1)
+summary(dropout_01)
+```
+
+```{r}
+gpa_01 <- lm(GPA_year2 ~ status + dist_from_cut + gender + highHS + first_language, data = clean_cut1)
+summary(gpa_01)
+```
+
+```{r}
+grad_01 <- glm(gradin4 ~ status + dist_from_cut + gender + highHS + first_language ,family = "binomial", data = clean_cut1)
+summary(grad_01)
+```
+```{r}
+clean_for_summary$hsgrade_pct
+```
+
+```{r}
+ggplot(clean_for_summary, aes(x = hsgrade_pct))+
+  geom_histogram(aes(y  = stat(count)), binwidth = 2.5, color = "black", fill = "#33CCCC")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+```
+
+```{r}
+ggplot(clean_cut2, aes(x = hsgrade_pct))+
+  geom_histogram(aes(y  = (..count..) ), binwidth = 5, color = "black", fill = "#33CCCC")+
+  theme_minimal()+
+  facet_wrap(~status)+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+```
+
+```{r}
+ggplot(clean_for_summary, aes(x = hsgrade_pct))+
+  geom_histogram(aes(y  = stat(count)), binwidth = 5, color = "black", fill = "#33CCCC")+
+  theme_minimal()+
+  facet_wrap(~status)+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Frequency Headcount")+
+  xlab("Year 1 GPA minus Probation Cutoff")+
+  ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
+```
+
+```{r}
+categorical1 <- clean_cut1 %>% 
+  summary_factorlist("status", c("gender", "birthplace", "study_campus", "first_language"),
+                     p = FALSE, 
+                     digits = c(1,1,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+continuous1 <- clean_cut1 %>% 
+  summary_factorlist("status", c("hsgrade_pct", "totcredits_year1", "age_at_entry"),
+                     p = FALSE,
+                     digits = c(2,2,3,1),
+                     add_dependent_label = TRUE, 
+                     dependent_label_prefix = "",
+                     add_col_totals = TRUE,
+                     include_row_missing_col = FALSE,
+                     col_totals_rowname = "",
+                     col_totals_prefix = "N(%) = ")
+combine1 <- rbind(categorical1, continuous1)
+combine1 <- rbind(combine1, c("","","", ""))
+combine1 <- rbind(combine1, c("","","Mean (SD)", "Mean (SD)"))
+combine1 <- combine1[-c(12),]
+combine1$` ` <- replace(combine1$` `, combine1$` ` == "Mean (SD)", "")
+combine1$status <- NULL
+combine1 <- combine1[c(1,3,2,5,4,6:11,15,16,12,13,14),] %>% 
+  mutate(Description = c("","Gender","","Birth Place", "","","Study Campus","","", "First Language","","","","Highschool Grade Percentile","Credits Attempted in First Year", "Age at Entry"))
+
+kable(combine1[,c(4,1,2,3)],caption = "Summary Statistics of Students Within 0.2 GPA of Probation Cutoff",
+      booktabs = TRUE, linesep = "") %>% 
+  kable_styling(latex_options = "hold_position")
 
 
+```
 
+```{r}
+gpa_camp2 <- lm(GPA_year2 ~ status + dist_from_cut + gender + first_language + highHS + study_campus, data = clean_cut)
+summary(gpa_camp2)
+```
 
+```{r}
+dropout_camp2 <- glm(left_school ~ status + dist_from_cut + gender + first_language + highHS + study_campus, family = "binomial", data = clean_cut)
+summary(dropout_camp2)
+```
 
+```{r}
+grad_camp2 <- glm(gradin4 ~ status + dist_from_cut + gender + first_language + highHS + study_campus  ,family = "binomial", data = clean_cut)
+summary(grad_camp2)
 
+```
 
+```{r}
+grad_camp2$coefficients
+```
+```{r}
+clean_cut %>% group_by(study_campus) %>% count()
+```
 
+```{r}
+sum(is.na(clean_cut$study_campus))
+```
 

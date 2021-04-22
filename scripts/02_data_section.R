@@ -20,6 +20,8 @@ library(rdrobust)
 library(broom)
 #install.packages("rdpower")
 library(rdpower)
+# install.packages("ggpubr")
+library(ggpubr)
 
 #### Import Data ####
 
@@ -27,13 +29,9 @@ library(rdpower)
 
 clean_data <- read.csv(here("inputs/data/cleaned_original.csv"))
 
-###################################
-#### Subsection: Original Data ####
-###################################
-
-# Summary statistics for all students
-
-# Referenced the following link to create this amazing summary table: https://finalfit.org/articles/all_tables_examples.html
+##############################################
+#### Subsection: About Academic Probation ####
+##############################################
 
 # create column for summary statistics
 
@@ -64,6 +62,49 @@ clean_for_summary <-  clean_data %>%
           graduated_by_year6 = case_when(gradin6 == 1 ~ "Yes",
                                          gradin6 == 0 ~ "No"),
           all_students = case_when(all == 1 ~ "All Students" ))
+
+# Filter invalid data caused by university administrative error in data reporting
+
+clean_summary_addcol <- clean_for_summary %>% 
+  filter((dist_from_cut < 0 & probation_year1 ==1)| (dist_from_cut >=0 & probation_year1 ==0)) %>% 
+  mutate( status = case_when(probation_year1 == 0 ~ "In Good Standing",
+                             probation_year1 == 1 ~ "On Academic Probation"))
+
+# Set students on academic probation as the baseline group for better visualization
+clean_summary_addcol$status <- as.factor(clean_summary_addcol$status)
+clean_summary_addcol$status <- relevel(clean_summary_addcol$status, "On Academic Probation")
+
+# Referenced the following to plot the histogram
+# http://www.sthda.com/english/wiki/ggplot2-histogram-plot-quick-start-guide-r-software-and-data-visualization
+
+# Histogram of the distribution of GPA from cutoff
+
+ggplot(clean_summary_addcol, aes(x = hsgrade_pct, color = status, fill = status))+
+  geom_histogram(aes(y  = ..density..), binwidth = 2.5, position = "identity", alpha = 0.4)+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom", legend.title = element_blank()) +
+  ylab("Density")+
+  xlab("Highschool Grade Percentile")+
+  ggtitle("Distribution of Highschool Grade by Academic Status for All Students")
+
+# Histogram of the distribution of attempted credit in Year 1
+
+ggplot(clean_summary_addcol, aes(x = totcredits_year1, color = status, fill = status))+
+  geom_histogram(aes(y  = ..density..), binwidth = 0.5, position = "identity", alpha = 0.4)+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom", legend.title = element_blank()) +
+  ylab("Density")+
+  xlab("Highschool Grade Percentile")+
+  ggtitle("Distribution of Attempted Credit in Year 1 by Academic Status for All Students")
+
+###################################
+#### Subsection: Original Data ####
+###################################
+
+# Summary statistics for all students
+
+# Referenced the following link to create this amazing summary table: https://finalfit.org/articles/all_tables_examples.html
+
 
 # Summary statistics for categorical variable
 categorical1 <- clean_for_summary %>% 
@@ -312,6 +353,37 @@ t.test(clean_cut_prob$totcredits_year1, clean_cut_good$totcredits_year1) %>%
           Method = method) %>% 
   kable(caption="Two Sided T-test on Student Credits Attempted in Year 1 within 0.2 GPA cutoff",align = "cccccc")%>%
   kable_styling(latex_options = "hold_position")
+
+##### Histogram to show Highschool Grade Distribution within certain bandwidth by academic status #####
+
+# Set students on academic probation as the baseline group for easier visualizations
+clean_cut$status <- as.factor(clean_cut$status)
+clean_cut$status <- relevel(clean_cut$status, "On Academic Probation")
+clean_cut2$status <- as.factor(clean_cut2$status)
+clean_cut2$status <- relevel(clean_cut2$status, "On Academic Probation")
+
+# Distribution of Highschool Grades within 0.6 GPA bandwidth
+hs_06 <- ggplot(clean_cut2, aes(x = hsgrade_pct, color = status, fill = status))+
+  geom_histogram(aes(y  = ..density..), binwidth = 2.5, position = "identity", alpha = 0.4)+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom", legend.title = element_blank()) +
+  ylab("Density")+
+  xlab("Highschool Grade Percentile")+
+  ggtitle("Within 0.6 GPA Bandwidth")
+
+# Distribution of Highschool Grades within 0.2 GPA bandwidth
+hs_02 <- ggplot(clean_cut, aes(x = hsgrade_pct, color = status, fill = status))+
+  geom_histogram(aes(y  = ..density..), binwidth = 2.5, position = "identity", alpha = 0.4)+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom", legend.title = element_blank()) +
+  ylab("Density")+
+  xlab("Highschool Grade Percentile")+
+  ggtitle("Within 0.2 GPA Bandwidth")
+
+# Combine above 2 figures into 1
+# Referenced the following  http://www.sthda.com/english/articles/32-r-graphics-essentials/126-combine-multiple-ggplots-in-one-graph/
+
+ggarrange(hs_06,hs_02, ncol = 2, nrow = 1, common.legend = TRUE, legend = "bottom")
 
 ##### Effect size to raise sufficient power #####
 
