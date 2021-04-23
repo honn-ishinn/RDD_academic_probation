@@ -43,7 +43,7 @@ library(ggpubr)
 
 &nbsp; &nbsp; This paper examines the causal impact on first-year university students after being placed on academic probation by exploiting the discontinuous probation GPA cutoff in a sharp regression discontinuity design (RDD). The data comes form a large Canadian university with three individual campuses. It aims to replicate main findings in `“Ability, Gender, and Performance Standards: Evidence from Academic Probation."`^[Original paper available at: https://www.aeaweb.org/articles?id=10.1257/app.2.2.95] [@cite_original] with adjustment on the bandwidth (i.e., student within certain grade point average of the academic probation cutoff). After applying the adjusted bandwidth, the results are NOT consistent with Lindo's findings that being placed on probation at the end of the first year increases the student dropout, improves the GPAs of the remaining students and negatively affects graduation rates. While students with different gender, highschool academic performance or first language react differently to academic probation. Furthermore, I also find heterogeneous responses towards academic probation across campus that is not elaborated in the original paper.
 
-&nbsp; &nbsp; The rest of this paper is organized as follows: In Data section (Section \@ref(Data)), I would first explain the domain background about the academic probation. Next, I introduce the data used in the original paper. And then, I would describe the Quasi-experiment design rationale and also raise concerns about the bandwidth used in the original paper. In Model section (Section \@ref(mainmodel)), I elaborate on the sharp RDD, address its assumptions and propose the model used in this study. In Results section (Section \@ref(result)), I show the impact of academic probation on student dropout and subsequent academic performance with the adjusted bandwidth. In Discussion section (Section \@ref(discuss)), I would first comment on the study results, and then elaborate on the causality of this quasi-experiment, address internal and external validity regarding the campus variation. I would also discuss potential bias in this experiment. Finally, I conclude with some weakness and suggest future directions of this study. ^[Code and data are available at the GitHub repo: https://github.com/honn-ishinn/RDD_academic_probation.]
+&nbsp; &nbsp; The rest of this paper is organized as follows: In Data section (Section \@ref(Data)), I would first explain the domain background about the academic probation. Next, I introduce the data used in the original paper. And then, I would describe the Quasi-experiment design rationale and also raise concerns about the bandwidth used in the original paper. In Model section (Section \@ref(mainmodel)), I elaborate on the sharp RDD, address its assumptions and propose the model used in this study. In Results section (Section \@ref(result)), I show the impact of academic probation on student dropout and subsequent academic performance with the adjusted bandwidth. In Discussion section (Section \@ref(discuss)), I would first comment on the study results, and then elaborate on the causality of this quasi-experiment, address internal and external validity regarding the campus variation. I would also discuss potential bias in this experiment. Finally, I conclude and suggest future directions of this study. ^[Codes and data are available at the GitHub repo: https://github.com/honn-ishinn/RDD_academic_probation.]
 
 # Data {#Data}
 
@@ -131,7 +131,7 @@ combine1 <- combine1[c(34,1,3,2,5,4,6:11,38,36,27:29,39,34,26,13,12,15,14,17,16,
 
 ## About Academic Probation
 
-&nbsp; &nbsp; The principle of academic probation in this university is simple: if a student's grade point average (GPA) is below a certain threshold, the student is placed on academic probation. At Campus 1 and Campus 2, students with a cumulative GPA below 1.5 grade points are placed on academic probation. Campus 3 has a GPA cutoff at 1.6 grade points. Students with GPA exactly at the probation cutoff are considered in good academic standing. The following histograms on student highschool grade and attempted course credit in first year suggest that students on academic probation generally have lower highschool grades (Figure \@ref(fig:histhsgrade)), and attempt less courses for credits in the first year(Figure \@ref(fig:histcredit)).
+&nbsp; &nbsp; The principle of academic probation in this university is simple: if a student's grade point average (GPA) is below a certain threshold, the student is placed on academic probation. At Campus 1 and Campus 2, students with a cumulative GPA below 1.5 grade points are placed on academic probation. Campus 3 has a GPA cutoff at 1.6 grade points. Students with GPA exactly at the probation cutoff are considered in good academic standing. The following histograms on student highschool grade and attempted course credit in first year suggest that students on academic probation generally have lower highschool grades (Figure \@ref(fig:histhsgrade)), and attempt less courses for credits in the first year^[Each semester course counts as 0.5 credit, each year course counts as 1 credit] (Figure \@ref(fig:histcredit)).
 
 ```{r, include=FALSE}
 #Filter invalid data caused by university administrative error in data reporting
@@ -376,7 +376,7 @@ kable(combine2[,c(4,1,2,3)],caption = "Summary Statistics of Students Within 0.2
   kable_styling(latex_options = "hold_position")
 ```
 
-&nbsp; &nbsp; Since the probation cutoff GPA lies between "adequate" C- of 1.7 GPA and "marginal" D+ of 1.3 GPA, I adjust the bandwidth to be 0.2 to reduce the academic performance difference. Table \@ref(tab:mycutoff) shows the summary statistics of 4106 student observable characteristics within 0.2 GPA. Even though the t-test (Table \@ref(tab:ttesthsme)) on highschool grade percentile still suggests difference on highschool performance, the estimated highschool grade percentile difference is much less than those within 0.6 bandwidth. Many probation students with low highschool grade are excluded after applying the narrower 0.2 GPA bandwidth as shown in the following histogram (Figure \@ref(fig:combinehs)). Besides, the t-test (Table \@ref(tab:ttestcrme)) on course credit does not show a significant difference in course load within 0.2 bandwidth, so the observed characteristics become more balanced.
+&nbsp; &nbsp; Since the probation cutoff GPA lies between "adequate" C- of 1.7 GPA and "marginal" D+ of 1.3 GPA, I adjust the bandwidth to 0.2 GPA to reduce the academic performance difference. Table \@ref(tab:mycutoff) shows the summary statistics of 4106 student observable characteristics within 0.2 GPA. Even though the t-test (Table \@ref(tab:ttesthsme)) on highschool grade percentile still suggests difference on highschool performance, the estimated highschool grade percentile difference is much less than those within 0.6 bandwidth. Many probation students with low highschool grade are excluded after applying the narrower 0.2 GPA bandwidth as shown in the following histogram (Figure \@ref(fig:combinehs)). Besides, the t-test (Table \@ref(tab:ttestcrme)) on course credit does not show a significant difference in course load within 0.2 bandwidth, so the observed characteristics become more balanced.
 
 ```{r ttesthsme, echo=FALSE}
 # conduct the t test on highschool grade between treatment and comparison group within 0.2 GPA cutoff score
@@ -454,7 +454,7 @@ hs_02 <- ggplot(clean_cut, aes(x = hsgrade_pct, color = status, fill = status))+
 ggarrange(hs_06,hs_02, ncol = 2, nrow = 1, common.legend = TRUE, legend = "bottom")
 ```
 
-&nbsp; &nbsp; The power of a test is the probability that the test will reject the test null hypothesis to detect a correct alternative hypothesis [@cite_stats_tests]. In this study, as the length of the bandwidth increases, more students are included within the bandwidth. The increase in the number of student raises the power to detect the effect on placing students on probation so that the effect is less likely to happen by chance rather than by the probation cutoff rule. Therefore, I use the `rdpower`[@cite_rdpower] package to calculate the sufficient sample size required (i.e., effect size) to detect the probation effect on (1) Student dropout, (2) Second year GPA and (3) Graduation rate by Year 4. The result as shown below (Table \@ref(tab:powersample)) suggests that the bandwidth of 0.2 GPA with 4106 students (1745 on probation, 2361 in good standing) could raise sufficient statistical power. Further adjustment on the bandwidth might either unbalance student characteristics (Increase bandwidth) or decrease the power of the study (Decrease bandwidth). So I would apply the bandwidth of 0.2 GPA to examine the impact of academic probation in the following sessions. 
+&nbsp; &nbsp; The power of a test is the probability that the test will reject the test null hypothesis to detect a correct alternative hypothesis [@cite_stats_tests]. In this study, as the length of the bandwidth increases, more students are included within the bandwidth. The increase in the number of student raises the power to detect the impact on placing students on probation so that the impact estimation is less likely to happen by chance rather than by the probation cutoff rule. Therefore, I use the `rdpower`[@cite_rdpower] package to calculate the sufficient sample size required (i.e., effect size) to detect the probation effect on (1) Student dropout, (2) Second year GPA and (3) Graduation rate by Year 4. The result as shown below (Table \@ref(tab:powersample)) suggests that the bandwidth of 0.2 GPA with 4106 students (1745 on probation, 2361 in good standing) could raise sufficient statistical power. Further adjustment on the bandwidth might either unbalance student characteristics (Increase bandwidth) or decrease the power of the study (Decrease bandwidth). So I would apply the bandwidth of 0.2 GPA to examine the academic probation impact in the following sessions. 
 
 ```{r, include=FALSE}
 # Calculate sample size required to raise sufficient power to estimate the probation effect on leaving school
@@ -509,7 +509,7 @@ tibble(
 
 4. The treatment and comparison units are most similar [@cite_impact]: as mentioned in Data Section \@ref(bandwidth), I would apply the adjusted bandwidth to balance the characteristics between students on probation barely below the cutoff and in good standing barely above the cutoff.
 
-&nbsp; &nbsp; Since the academic probation cutoff rule is known, one may question that students barely below the probation cutoff would study harder to avoid being placed on academic probation. However, the survey conducted in Lindo's paper suggests that first year students are generally less familiar with university policies to know the GPA required to avoid academic probation. And Lindo also finds no evidence that students' grades are related to their knowledge about academic probation [@cite_original]. So first year students are not likely to "play with" the university academic probation cutoff to avoid academic probation. The following figure (Figure \@ref(fig:histcutoff)) shows the distribution of the GPA distance from probation cutoff of all students. There is a smooth increase on the frequency distribution of the student GPA until reaching students' average GPA (GPA distance from probation around 1) and there is no obvious jump on either side of the probation cutoff. So students on either side of the probation cutoff is balanced as suggested in Data Section \@ref(bandwidth).
+&nbsp; &nbsp; Since the academic probation cutoff rule is known, one may question that students barely below the probation cutoff would study harder to avoid being placed on academic probation. However, the survey conducted in Lindo's paper suggests that first year students are generally less familiar with university policies to know exact GPA required to avoid academic probation. And Lindo also finds no evidence that students' grades are related to their knowledge about academic probation [@cite_original]. So first year students are not likely to "play with" the university probation policy to avoid academic probation. The following figure (Figure \@ref(fig:histcutoff)) shows the distribution of the GPA distance from probation cutoff of all students. There is a smooth increase on the frequency distribution of the student GPA until reaching students' average GPA (GPA distance from probation around 1) and there is no obvious jump on either side of the probation cutoff. So students on either side of the probation cutoff is balanced as suggested in Data Section \@ref(bandwidth).
 
 ```{r histcutoff, fig.align='center', fig.cap="Distribution of Year 1 GPA relative to Probation Cutoff for All Students", fig.width=8, fig.height=4, echo= FALSE, message=FALSE, warning=FALSE}
 # Histogram of the distribution of GPA from cutoff
@@ -529,7 +529,7 @@ ggplot(clean_for_summary, aes(x = dist_from_cut))+
 
 ### Model Background
 
-&nbsp; &nbsp; The university policy ensures that all first year students below the probation cutoff will be placed into academic probation^[The original data shows university administrative errors in data reporting that falsely place students either above the cutoff on probation or below the cutoff in good standing (98 out of 44362 student observations). These dirty data are removed from this study.]. So the discontinuity around the cutoff is "sharp". 
+&nbsp; &nbsp; The university policy ensures that all first year students below the probation cutoff are on academic probation and those above the cutoff are in good standing ^[The original data has university administrative errors in data reporting that falsely place students either above cutoff on probation or below cutoff in good standing (98 out of 44362 student observations). These dirty data are removed from this study.]. So the discontinuity around the cutoff is "sharp". 
 
 &nbsp; &nbsp; By placing students on academic probation, the university informs these students an urge to improve their academic performance to prevent further escalating penalties such as suspension. According to $\mbox{B}{\acute{e}}\mbox{nabou}$ and Tirole's model of agents' responses to a performance standard [@cite_model_background], the probation policy as a negative incentive may result in the following outcomes:
 
@@ -576,7 +576,7 @@ where
 
 * $\mbox{Proation}_{i}$ is an indicator variable to show whether the student $i$ is placed on academic probation or not in the first year. And its coefficient $\beta_{0}$ is the estimate of impact on first year students after being placed on academic probation that we are primarily interested in.
 
-* $f(\mbox{Cutoff}\:\mbox{Distance}_{i})$ is the function to represent the student $i$'s first year GPA distance from the cutoff. Since the first order polynomial is used during the power analysis to determine required student samples (Data Section \@ref(bandwidth)), it will also be applied in building the sharp RDD model^[Adjusting the order of distance from cutoff function does not affect the results. Lindo's original paper also used first order polynomial on distance from the cutoff to estimate probation outcomes].
+* $f(\mbox{Cutoff}\:\mbox{Distance}_{i})$ is the function to represent the student $i$'s first year GPA distance from the cutoff. Since the first order polynomial is used during the power analysis to determine required student samples (Data Section \@ref(bandwidth)), it will also be applied in building the sharp RDD model^[Adjusting the order of distance from cutoff function till fourth order does not affect the results. Lindo's original paper also used first order polynomial on distance from the cutoff to estimate probation outcomes.].
 
 * $\mbox{Gender}$ is an indicator variable to show whether the student $i$ is male or female. Its coefficient $\alpha_{1}$ is the estimate of gender difference in response to academic probation.
 
@@ -587,7 +587,7 @@ where
 
 &nbsp; &nbsp; Since the dropout decision of an individual student is whether leaving the university or not, it is a dichotomous variable. Therefore, I would use the logistic regression to estimate the probation impact on probability of student dropout. Similarly, the graduation decision of whether graduating by Year 4 or not is also a dichotomous variable. So I would also use the logistic regression to estimate the probation impact on probability of student graduating by Year 4. 
 
-&nbsp; &nbsp; As the GPA is an continuous variable, I would use the linear regression to estimate the probation impact on student annual GPA in the second academic year. 
+&nbsp; &nbsp; As the GPA is an continuous variable from 0.0 to 4.0, I would use the linear regression to estimate the probation impact on student annual GPA in the second academic year. 
 
 # Results {#result}
 
@@ -782,7 +782,7 @@ ggplot(data= clean_cut, aes(x = dist_from_cut, y = gradin4, color = status))+
 
 ### Causal Inference and Internal Validity
 
-&nbsp; &nbsp; So does placing first year students on academic probation affect student outcomes? Instead of randomly assigning students either probation or good standing status as a randomized controlled trial, this study uses regression discontinuity design to estimate the probation impact through observed student outcomes around the probation cutoff. And one may wonder if such estimation is able to infer that academic probation causes changes on student outcomes. Actually, as students get closer to the cutoff, they share such similar characteristics that probation estimation could be as good as randomized controlled trial. Besides, previous meta-analysis on RDD has also suggested its high internal validity to provide an accurate probation estimate within the study settings [@cite_internal].
+&nbsp; &nbsp; So does placing first year students on academic probation affect student outcomes? Instead of randomly assigning students either probation or good standing status as a randomized controlled trial, this study uses regression discontinuity design to estimate the probation impact through observed student outcomes around the probation cutoff. And one may wonder whether such estimation is able to infer that academic probation causes changes on student outcomes. Actually, as students get closer to the cutoff, they share such similar characteristics that probation estimation could be as good as randomized controlled trial. Besides, previous meta-analysis on RDD has also suggested its high internal validity to provide an accurate probation estimate within the study settings [@cite_internal].
 
 &nbsp; &nbsp; By applying a narrower bandwidth of 0.2 GPA, student characteristics become more balanced (Table \@ref(tab:mycutoff)). Although the t-test still shows a difference on highschool performance between treatment and comparison students (Table \@ref(tab:ttesthslin)), study results in Result Section \@ref(result) has already suggested that the impact of academic probation on student dropout, Year 2 annual GPA and graduation is not "significant" under relevant models. In fact, further restricting the bandwidth to 0.1 GPA also does not show "significant" probation impact on student outcomes.
 
@@ -862,29 +862,38 @@ modelsummary(list("Logistic for Dropoout" = dropout_camp2, "Linear for Year 2 GP
 
 ### From School Policy
 
-&nbsp; &nbsp; Even though students in this university are not likely to "play with" the probation rule itself to avoid academic probation as discussed in Model Section \@ref(assumption). There are other academic policies potentially affecting student GPA, namely "Credit/No Credit option" and "Late Withdrawal"^[This is the current academic policies of this university as of 2021. Academic polices between 1996 and 2005 might be different and could not be retrieved on the university website. While these policies may still raise potential biases of the study]:
+&nbsp; &nbsp; Even though students in this university are not likely to "play with" the probation rule itself to avoid academic probation as discussed in Model Section \@ref(assumption). There are other academic policies potentially affecting student GPA, namely "Credit/No Credit option" and "Late Withdrawal"^[This is the current academic policies of this university as of 2021. Academic polices between 1996 and 2005 might be different and could not be retrieved on the university website. While these policies may still raise potential biases of this study.]:
 
 &nbsp; &nbsp; The Credit/No Credit option allows students to remove course result from their GPA but still count course credit if passing the course(at least $50\%$ final mark, 2.0 credits maximum) before a certain deadline (usually in the middle of the semester). For example, if a student utilizes this policy on:
 
-* A $51\%$ final grade course of 0.7 grade point. This course will count credit but not used to calculate the GPA.
+* A $51\%$ grade course of 0.7 grade point. This course will count credit but not used to calculate GPA.
 
-* A failed course less than $50\%$ final grade. This course will neither count credit nor used to calculate the GPA.
+* A failed course less than $50\%$ grade. This course will neither count credit nor used to calculate GPA.
 
-&nbsp; &nbsp; The Late Withdrawal allows students to withdraw from a course before the last day of class (3.0 credits maximum). A student can use this policy when feeling behind in a course and this course will neither count credit nor used to calculate the GPA.
+&nbsp; &nbsp; The Late Withdrawal allows students to withdraw from a course before the last day of class (3.0 credits maximum). A student can use this policy when feeling behind in a course and this course will neither count credit nor used to calculate GPA.
 
 &nbsp; &nbsp; By exploiting these policies, a student can remove courses with relative low grades. So the GPA is expected to increase **if the student knows and uses these policies**. These policies may potentially change student academic status from on probation to in good standing, violating the RDD assumption of free manipulation on forcing variable. Unfortunately, Lindo did not address these policies so that the data obtained from the original paper does not contained any information regarding these policies. It also remains obscure that to what extent first year students in this university know these policies, and whether these students will get more familiar with university policies in Year 2 to "play with" them.
 
 
 ## Dirty Data
 
-&nbsp; &nbsp; Although the original data obtained from Lindo's paper contains detailed student administrative information to carry on this study, 
+&nbsp; &nbsp; Although the original data obtained from Lindo's paper contains detailed student information to carry on this study, I find the data dirty through following examples:
 
+* The original data actually records student graduation information by Year 4, Year 5 and Year 6. However, there are enormous missing values on these graduation related data (14345 NAs on Year 4, 19781 NAs on Year 5, 24605 NAs on Year 6 out of 44362 observations). Besides, even some students are recorded to graduate by Year 4 but not recorded by Year 5 or Year 6. So I refrained to explore the probation impact on graduation by Year 5 and Year 6 because of such data inconsistency, even though Lindo did relevant analysis in their original paper.
 
+* Some students above the probation cutoff GPA are on academic probation, and some below the probation cutoff GPA are in good standing (98 out of 44262 observations). Lindo attributed this inconsistency to administrative error in data reporting, while it remains uncertain whether there are other policies causing this inconsistency.
 
-## Weaknesses and Future Works
+&nbsp; &nbsp; Above examples demonstrate a relatively poor quality of data for analysis. And these dirty data may also affect accuracy of study results.
+
+## Comment and Future Works
+
+&nbsp; &nbsp; As a replication study, this paper does not use the exact same model as in the original paper. The original paper subsets the data into different subgroups by student gender, highschool performance and first language and uses RDD to examine the probation impact on each subgroup, while this paper includes all of those student characteristics into one model and uses RDD to examine the probation impact as a whole. Even though the analysis approach is slightly different, I believe the model used in this study is reasonable and could draw appropriate findings.
+
+&nbsp; &nbsp; Surely, there must be other characteristics affecting student responses towards academic probation as well (e.g., family background, income, personal trait, etc.).
 
 Weaknesses and next steps [@cite_success]should also be included.
 
+The university should not rely on the academic probation policy itself to hope for improvement of student academic performance but rather introducing some study programs to help improving the student 
 
 student family background
 https://www.tandfonline.com/doi/abs/10.1080/15235882.1997.10162712
