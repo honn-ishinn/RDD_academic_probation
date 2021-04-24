@@ -47,6 +47,10 @@ clean_data$prog_science <- clean_data$prog_science %>% replace_na(0)
 clean_data$prog_socsci_bus <- clean_data$prog_socsci_bus %>% replace_na(0)
 clean_data$prog_socscihum <- clean_data$prog_socscihum %>% replace_na(0)
 
+# Note: Student programs may change after first entering the university. 
+# And there is no information about whether the program enrollment is recorded at the first year or by the end of graduation.
+# Besides, there are many students with program unknown. So I would like not to proceed on these data columns in this study.
+
 # Save the cleaned original data
 
 write_csv(clean_data,here::here("inputs/data/cleaned_original.csv"))
