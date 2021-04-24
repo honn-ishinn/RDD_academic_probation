@@ -4,7 +4,7 @@
 # Date:  11 April 2021
 # Contact: lancehong.shi@mail.utoronto.ca
 # License: MIT
-# Pre-requisites: None
+# Pre-requisites: Need to have downloaded the original dataset and saved it to "inputs/data" and renamed to original_data.dta
 
 #### Workspace set-up ####
 

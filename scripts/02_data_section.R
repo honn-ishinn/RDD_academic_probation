@@ -4,7 +4,8 @@
 # Date:  11 April 2021
 # Contact: lancehong.shi@mail.utoronto.ca
 # License: MIT
-# Pre-requisites: Need to have downloaded the "cleaned_original.csv" in "01_initial_clean.R" and saved it to inputs/data
+# Pre-requisites: Need to have downloaded the original dataset and saved it to "inputs/data" and renamed to original_data.dta,
+#                                         the "cleaned_original.csv" in "01_initial_clean.R" and saved it to inputs/data
 
 
 #### Workspace set-up ####
@@ -27,6 +28,7 @@ library(ggpubr)
 
 # Read in the cleaned data
 
+original_data <- read_dta(here("inputs/data/original_data.dta"))
 clean_data <- read.csv(here("inputs/data/cleaned_original.csv"))
 
 ##############################################

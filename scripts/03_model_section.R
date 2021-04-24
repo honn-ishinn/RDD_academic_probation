@@ -18,10 +18,6 @@ library(here)
 
 clean_for_summary <- read.csv(here("inputs/data/summary_data.csv"))
 
-# data within bandwidth 0.2
-
-clean_cut <- read.csv(here("inputs/data/summary_data.csv"))
-
 
 ##### Subsection: Test on Regression Discontinuity Design Assumptions  #####
 
@@ -35,16 +31,3 @@ ggplot(clean_for_summary, aes(x = dist_from_cut))+
   ylab("Frequency Headcount")+
   xlab("Year 1 GPA minus Probation Cutoff")+
   ggtitle("Distribution of Year 1 GPA relative to Probation Cutoff for All Students")
-
-##### Subsection: Model Background  #####
-
-# Check if the RDD is "sharp" or "fuzzy"
-
-ggplot(clean_cut,aes(x = dist_from_cut, y = status, group = status, color = status))+
-  geom_point(alpha = 0.1)+
-  geom_smooth(method = "lm")+
-  theme_minimal()+
-  theme(legend.position = "none", plot.title = element_text(hjust = 0.5))+
-  labs( title = "Stuent Academic Status",
-        y ="Academic Status",
-        x = "Year 1 GPA minus Probation Cutoff")
