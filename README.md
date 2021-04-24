@@ -20,3 +20,8 @@ In "inputs", the "data" folder contains the raw data and cleaned data from "scri
 
 In "outputs", the "paper" folder contains the paper of the study.
 
+# Enhancement
+
+A Shiny App is created to display interactive regression results of the model as proposed in this paper.
+
+The Shiny App is available at: https://lance-hong-shi.shinyapps.io/RDD_academic_probation/
